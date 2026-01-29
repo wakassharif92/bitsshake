@@ -60,8 +60,8 @@ export default function AdminGate() {
           <Image
             src="/bitsshake-02.png"
             alt="BitsShake Logo"
-            width={120}
-            height={48}
+            width={400}
+            height={300}
             className="mx-auto mb-2"
           />
           <p className="text-gray-600">Admin Access Required</p>
