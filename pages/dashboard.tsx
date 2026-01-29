@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { Document, User } from "@/lib/types";
 
@@ -99,7 +100,13 @@ export default function Dashboard() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">BitsShake</h1>
+            <Image
+              src="/bitsshake-01.png"
+              alt="BitsShake Logo"
+              width={150}
+              height={80}
+              className="mb-2"
+            />
             <p className="text-sm text-gray-600 mt-1">
               Welcome, {user?.full_name} ({user?.company_name})
             </p>

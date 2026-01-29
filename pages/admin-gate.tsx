@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 export default function AdminGate() {
   const router = useRouter();
@@ -56,7 +57,13 @@ export default function AdminGate() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600 mb-2">BitsShake</h1>
+          <Image
+            src="/bitsshake-02.png"
+            alt="BitsShake Logo"
+            width={120}
+            height={48}
+            className="mx-auto mb-2"
+          />
           <p className="text-gray-600">Admin Access Required</p>
         </div>
 

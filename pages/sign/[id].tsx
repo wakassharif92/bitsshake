@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Document, Recipient } from "@/lib/types";
+import Image from "next/image";
 
 export default function SignDocument() {
   const router = useRouter();
@@ -191,7 +192,13 @@ export default function SignDocument() {
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">BitsShake</h1>
+          <Image
+            src="/bitsshake-02.png"
+            alt="BitsShake Logo"
+            width={120}
+            height={48}
+            className="mb-2"
+          />
           <p className="text-sm text-gray-600 mt-1">{document.title}</p>
         </div>
       </header>
