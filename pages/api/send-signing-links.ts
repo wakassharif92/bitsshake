@@ -82,7 +82,7 @@ export default async function handler(
 
     // sSend emails to each recipient (both signers and viewers)
     const emailPromises = recipients.map(async (recipient) => {
-      const signingLink = `$https://www.bitsshake.com/sign/${documentId}?email=${encodeURIComponent(recipient.email)}`;
+      const signingLink = `https://www.bitsshake.com/sign/${documentId}?email=${encodeURIComponent(recipient.email)}`;
 
       let emailSubject: string;
       let emailHtml: string;
