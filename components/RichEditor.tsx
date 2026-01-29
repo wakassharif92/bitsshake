@@ -104,7 +104,7 @@ export default function RichEditor({ content, onChange }: RichEditorProps) {
     if (editor && content) {
       const currentHtml = editor.getHTML();
       if (currentHtml !== content) {
-        editor.commands.setContent(content, false);
+        editor.commands.setContent(content);
       }
     }
   }, [content, editor]);
