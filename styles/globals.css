@@ -1,3 +1,4 @@
+@import "./inria-font.css";
 @import "tailwindcss";
 
 :root {
@@ -22,5 +23,18 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inria), Arial, Helvetica, sans-serif;
+}
+
+/* Force dark text in input fields */
+input,
+textarea,
+select {
+  color: #000 !important;
+  background-color: #fff !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #999 !important;
 }

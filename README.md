@@ -1,40 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# eHandShake - Internal eSignature Platform
 
-## Getting Started
+A complete, production-ready eSignature solution for internal company use. Built with Next.js, TypeScript, React, and Supabase.
 
-First, run the development server:
+## 🎯 What Is eHandShake?
 
+eHandShake is an internal document signing platform that allows your company to:
+- Create and manage documents
+- Add multiple recipients with different roles (Signer or Viewer)
+- Send documents for electronic signature
+- Track all signing activity with audit trails
+- Download completed documents as PDFs
+
+Perfect for contracts, agreements, approvals, and any documents that need electronic signatures.
+
+## ✨ Key Features
+
+### For Admins
+- ✅ Create documents from scratch or use templates
+- ✅ Add recipients and assign roles (Signer/Viewer)
+- ✅ Edit documents before sending
+- ✅ Send to multiple recipients at once
+- ✅ Track completion status in real-time
+- ✅ Download final PDFs with audit trails
+
+### For Recipients
+- ✅ Review documents via secure link
+- ✅ Sign with typed text (multiple font styles)
+- ✅ Preview signature before submitting
+- ✅ Automatic confirmation upon signing
+
+### Security & Compliance
+- ✅ Complete audit trail (who, what, when, where, how)
+- ✅ IP address and device logging
+- ✅ Role-based access control
+- ✅ Row-level security at database level
+- ✅ Email verification for recipients
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 20+
+- npm or yarn
+- Supabase account (free)
+
+### Setup (5 minutes)
+
+1. **Clone or navigate to project**
+   ```bash
+   cd /Users/wakassharif/Projects/ehandshake
+   ```
+
+2. **Get Supabase credentials**
+   - Go to https://supabase.com
+   - Create a new project
+   - Get API keys from Settings → API
+
+3. **Configure environment**
+   ```bash
+   # Update .env.local with your Supabase credentials
+   NEXT_PUBLIC_SUPABASE_URL=your_url_here
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key_here
+   SUPABASE_SERVICE_ROLE_KEY=your_service_key_here
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   ```
+
+4. **Setup database**
+   - In Supabase SQL Editor
+   - Copy all of `lib/schema.sql`
+   - Execute the SQL
+
+5. **Run development server**
+   ```bash
+   npm run dev
+   ```
+   Open http://localhost:3000
+
+## 📖 Documentation
+
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Executive summary
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute setup guide
+- **[SETUP.md](SETUP.md)** - Detailed configuration
+- **[IMPLEMENTATION.md](IMPLEMENTATION.md)** - Complete technical guide
+- **[FILE_LIST.md](FILE_LIST.md)** - All files created
+
+## 🚢 Deployment
+
+### Deploy to Vercel
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Push to GitHub
+git add . && git commit -m "Initial eHandShake" && git push
+
+# 2. Import in Vercel
+# Add environment variables
+# Deploy!
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📦 Tech Stack
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: PostgreSQL (Supabase)
+- **Authentication**: Supabase Auth
+- **PDF**: jsPDF
+- **Deployment**: Vercel (recommended)
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## ✅ What's Included
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+✅ 14 working pages
+✅ 2 API endpoints  
+✅ Complete database schema with RLS
+✅ Email utility framework
+✅ PDF generation
+✅ Comprehensive documentation
+✅ Production-ready code
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎯 Next Steps
 
-## Learn More
+1. Get Supabase account (free at supabase.com)
+2. Follow [QUICKSTART.md](QUICKSTART.md)
+3. Test the platform locally
+4. Configure email service (optional)
+5. Deploy to production
 
-To learn more about Next.js, take a look at the following resources:
+## 🎓 Documentation Files
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+| File | Purpose |
+|------|---------|
+| PROJECT_SUMMARY.md | Executive overview |
+| QUICKSTART.md | 5-minute setup |
+| SETUP.md | Detailed configuration |
+| IMPLEMENTATION.md | Technical details |
+| FILE_LIST.md | All files created |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+**You're all set! Your complete eHandShake platform is ready. Just add your Supabase credentials! 🎉**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+Built with ❤️ using Next.js, React, TypeScript, Supabase, and Tailwind CSS
