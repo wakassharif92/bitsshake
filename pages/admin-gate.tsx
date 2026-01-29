@@ -119,7 +119,7 @@ export default function AdminGate() {
           </button>
         </form>
 
-        <div className="mt-8 p-4 bg-blue-50 rounded-md">
+        {/* <div className="mt-8 p-4 bg-blue-50 rounded-md">
           <p className="text-xs text-gray-600">
             <strong>Demo credentials:</strong>
             <br />
@@ -127,7 +127,7 @@ export default function AdminGate() {
             <br />
             Password: ehandshake123
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
