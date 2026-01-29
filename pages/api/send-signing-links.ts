@@ -109,22 +109,25 @@ export default async function handler(
         `;
       } else {
         // Viewer role
-        emailSubject = `View Document: ${document.title}`;
+        emailSubject = `Action Required: You have been invited to view a document (${document.title})`;
         emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>You have been invited to view a document</h2>
+            <h2 style="color:#2563eb;">Document Viewing Invitation</h2>
             <p>Hello ${recipient.name},</p>
-            <p>You have been invited to view the document: <strong>${document.title}</strong></p>
-            <p style="margin-top: 30px;">
-              <a href="${signingLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-                Click here to view the document
+            <p>You have been invited by <strong>${adminEmail}</strong> to view the document: <strong>${document.title}</strong>.</p>
+            <p style="margin-top: 24px;">
+              <a href="${signingLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+                View Document
               </a>
             </p>
-            <p style="margin-top: 30px; color: #666; font-size: 12px;">
-              Or copy this link: ${signingLink}
+            <p style="margin-top: 24px; color: #666; font-size: 13px;">
+              If the button above does not work, copy and paste this link into your browser:<br />
+              <span style="word-break:break-all;">${signingLink}</span>
             </p>
-            <p style="color: #999; font-size: 12px; margin-top: 40px;">
-              This link is unique to you and expires after 7 days.
+            <hr style="margin:32px 0; border:none; border-top:1px solid #eee;" />
+            <p style="color: #999; font-size: 12px;">
+              This link is unique to you and expires after 7 days.<br />
+              If you did not expect this email, you can safely ignore it.
             </p>
           </div>
         `;
