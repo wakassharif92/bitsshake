@@ -80,7 +80,7 @@ export default async function handler(
         .json({ success: false, error: "Failed to fetch recipients" });
     }
 
-    // Send emails to each recipient (both signers and viewers)
+    // sSend emails to each recipient (both signers and viewers)
     const emailPromises = recipients.map(async (recipient) => {
       const signingLink = `${process.env.NEXT_PUBLIC_APP_URL}/sign/${documentId}?email=${encodeURIComponent(recipient.email)}`;
 
