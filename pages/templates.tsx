@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
 import { Template } from "@/lib/types";
+
+const RichEditor = dynamic(() => import("@/components/RichEditor"), {
+  ssr: false,
+});
 
 export default function Templates() {
   const router = useRouter();
@@ -11,6 +16,16 @@ export default function Templates() {
   const [showModal, setShowModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ name: "", content: "" });
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const dynamicVariables = [
+    { label: "Client Name", value: "{clientName}" },
+    { label: "Price", value: "{price}" },
+    { label: "Upfront Fee", value: "{upfrontFee}" },
+    { label: "Start Date", value: "{startDate}" },
+    { label: "End Date", value: "{endDate}" },
+    { label: "Total Days", value: "{totalDays}" },
+  ];
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -36,7 +51,7 @@ export default function Templates() {
     fetchTemplates();
   }, [router]);
 
-  const handleCreateTemplate = async () => {
+  const handleSaveTemplate = async () => {
     if (!newTemplate.name.trim()) {
       alert("Please enter a template name");
       return;
@@ -54,27 +69,67 @@ export default function Templates() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("templates")
-        .insert([
-          {
-            admin_id: session.user.id,
+      if (editingId) {
+        // Update existing template
+        const { error } = await supabase
+          .from("templates")
+          .update({
             name: newTemplate.name,
             content: newTemplate.content,
-          },
-        ])
-        .select();
+          })
+          .eq("id", editingId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setTemplates([...templates, data[0]]);
+        setTemplates(
+          templates.map((t) =>
+            t.id === editingId
+              ? {
+                  ...t,
+                  name: newTemplate.name,
+                  content: newTemplate.content,
+                }
+              : t,
+          ),
+        );
+      } else {
+        // Create new template
+        const { data, error } = await supabase
+          .from("templates")
+          .insert([
+            {
+              admin_id: session.user.id,
+              name: newTemplate.name,
+              content: newTemplate.content,
+            },
+          ])
+          .select();
+
+        if (error) throw error;
+
+        setTemplates([...templates, data[0]]);
+      }
+
       setNewTemplate({ name: "", content: "" });
+      setEditingId(null);
       setShowModal(false);
     } catch (err: any) {
-      alert("Error creating template: " + err.message);
+      alert("Error saving template: " + err.message);
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEditTemplate = (template: Template) => {
+    setNewTemplate({ name: template.name, content: template.content || "" });
+    setEditingId(template.id);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setNewTemplate({ name: "", content: "" });
+    setEditingId(null);
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -111,7 +166,11 @@ export default function Templates() {
               <h1 className="text-3xl font-bold text-gray-900">Templates</h1>
             </div>
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setNewTemplate({ name: "", content: "" });
+                setEditingId(null);
+                setShowModal(true);
+              }}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
             >
               Create Template
@@ -158,7 +217,13 @@ export default function Templates() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {new Date(template.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
+                        <button
+                          onClick={() => handleEditTemplate(template)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          Edit
+                        </button>
                         <button
                           onClick={() => handleDeleteTemplate(template.id)}
                           className="text-red-600 hover:text-red-800"
@@ -178,14 +243,25 @@ export default function Templates() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Create Template
-            </h3>
-            <div className="space-y-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                {editingId ? "Edit Template" : "Create Template"}
+              </h3>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Template Name
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Template Name *
                 </label>
                 <input
                   type="text"
@@ -194,40 +270,67 @@ export default function Templates() {
                     setNewTemplate({ ...newTemplate, name: e.target.value })
                   }
                   placeholder="e.g., Service Agreement"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Content
-                </label>
-                <textarea
-                  value={newTemplate.content}
-                  onChange={(e) =>
-                    setNewTemplate({ ...newTemplate, content: e.target.value })
-                  }
-                  placeholder="Enter template content..."
-                  rows={12}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-              </div>
+              <div className="flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Content
+                  </label>
+                  <div className="text-xs text-gray-600">
+                    Click below to insert dynamic variables
+                  </div>
+                </div>
 
-              <div className="flex gap-2 pt-4">
-                <button
-                  onClick={handleCreateTemplate}
-                  disabled={saving}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {saving ? "Creating..." : "Create Template"}
-                </button>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-md hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
+                {/* Dynamic Variables Buttons */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {dynamicVariables.map((variable) => (
+                    <button
+                      key={variable.value}
+                      onClick={() => {
+                        setNewTemplate({
+                          ...newTemplate,
+                          content: newTemplate.content + variable.value,
+                        });
+                      }}
+                      className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-300"
+                    >
+                      +{variable.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-white rounded-lg border border-gray-300 overflow-hidden flex flex-col flex-1">
+                  <RichEditor
+                    content={newTemplate.content}
+                    onChange={(content) =>
+                      setNewTemplate({ ...newTemplate, content })
+                    }
+                  />
+                </div>
               </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex gap-2 p-6 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={handleSaveTemplate}
+                disabled={saving || !newTemplate.name.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
+              >
+                {saving
+                  ? "Saving..."
+                  : editingId
+                    ? "Update Template"
+                    : "Create Template"}
+              </button>
+              <button
+                onClick={handleCloseModal}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-md hover:bg-gray-400 font-medium"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

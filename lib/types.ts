@@ -5,9 +5,12 @@ export interface Document {
   title: string;
   content: string;
   template_id?: string;
-  status: "draft" | "sent" | "signed" | "completed";
+  status: "draft" | "sent" | "signed" | "completed" | "uploaded";
   created_at: string;
   updated_at: string;
+  file_name?: string;
+  file_url?: string;
+  is_uploaded?: boolean;
 }
 
 export interface Template {

@@ -63,11 +63,12 @@ export default function ViewDocument() {
     setShowLinkModal(true);
   };
   const router = useRouter();
-  const { id } = router.query;
+  const { id, email } = router.query;
   const [document, setDocument] = useState<Document | null>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPublicView, setIsPublicView] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -77,44 +78,72 @@ export default function ViewDocument() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      setCurrentUserId(session?.user?.id || null);
+      const userId = session?.user?.id || null;
+      setCurrentUserId(userId);
 
-      // Fetch document
-      const { data: docData } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("id", id)
-        .single();
+      if (userId) {
+        setIsPublicView(false);
+        // Fetch document
+        const { data: docData } = await supabase
+          .from("documents")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-      if (!docData) {
-        router.push("/dashboard");
+        if (!docData) {
+          router.push("/dashboard");
+          return;
+        }
+
+        setDocument(docData);
+
+        // Fetch recipients
+        const { data: recipientsData } = await supabase
+          .from("recipients")
+          .select("*")
+          .eq("document_id", id)
+          .order("created_at", { ascending: false });
+
+        setRecipients(recipientsData || []);
+
+        // Fetch audit logs
+        const { data: logsData } = await supabase
+          .from("audit_logs")
+          .select("*")
+          .eq("document_id", id)
+          .order("timestamp", { ascending: false });
+
+        setAuditLogs(logsData || []);
+        setLoading(false);
         return;
       }
 
-      setDocument(docData);
+      if (!email) {
+        router.push("/");
+        return;
+      }
 
-      // Fetch recipients
-      const { data: recipientsData } = await supabase
-        .from("recipients")
-        .select("*")
-        .eq("document_id", id)
-        .order("created_at", { ascending: false });
+      setIsPublicView(true);
+      const response = await fetch(
+        `/api/public-document?documentId=${encodeURIComponent(
+          String(id),
+        )}&email=${encodeURIComponent(String(email))}`,
+      );
 
-      setRecipients(recipientsData || []);
+      if (!response.ok) {
+        router.push("/");
+        return;
+      }
 
-      // Fetch audit logs
-      const { data: logsData } = await supabase
-        .from("audit_logs")
-        .select("*")
-        .eq("document_id", id)
-        .order("timestamp", { ascending: false });
-
-      setAuditLogs(logsData || []);
+      const data = await response.json();
+      setDocument(data.document || null);
+      setRecipients(data.recipients || []);
+      setAuditLogs([]);
       setLoading(false);
     };
 
     fetchData();
-  }, [id, router]);
+  }, [id, email, router]);
 
   const handleDownloadPDF = async () => {
     // Only check signers for completion
@@ -151,11 +180,13 @@ export default function ViewDocument() {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <button className="text-gray-600 hover:text-gray-900">
-                  ← Back
-                </button>
-              </Link>
+              {!isPublicView && (
+                <Link href="/dashboard">
+                  <button className="text-gray-600 hover:text-gray-900">
+                    ← Back
+                  </button>
+                </Link>
+              )}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
                   {document.title}

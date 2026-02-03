@@ -5,6 +5,15 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
 import { Template } from "@/lib/types";
 
+const dynamicVariables = [
+  { label: "Client Name", value: "{clientName}" },
+  { label: "Price", value: "{price}" },
+  { label: "Upfront Fee", value: "{upfrontFee}" },
+  { label: "Start Date", value: "{startDate}" },
+  { label: "End Date", value: "{endDate}" },
+  { label: "Total Days", value: "{totalDays}" },
+];
+
 const RichEditor = dynamic(() => import("@/components/RichEditor"), {
   ssr: false,
 });
@@ -17,6 +26,40 @@ export default function CreateDocument() {
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [showVariableModal, setShowVariableModal] = useState(false);
+  const [templateVariables, setTemplateVariables] = useState<
+    { name: string; value: string }[]
+  >([]);
+  const [variableValues, setVariableValues] = useState<Record<string, string>>(
+    {},
+  );
+
+  const extractTemplateVariables = (html: string) => {
+    const found = new Set<string>();
+    const checkSource = (source: string) => {
+      dynamicVariables.forEach((variable) => {
+        if (source.includes(variable.value)) {
+          found.add(variable.value.replace(/[{}]/g, ""));
+        }
+      });
+    };
+
+    checkSource(html || "");
+
+    try {
+      const textContent =
+        typeof window !== "undefined"
+          ? new DOMParser().parseFromString(html, "text/html").body
+              .textContent || ""
+          : html.replace(/<[^>]*>/g, "");
+      checkSource(textContent);
+    } catch {
+      const fallbackText = (html || "").replace(/<[^>]*>/g, "");
+      checkSource(fallbackText);
+    }
+
+    return Array.from(found);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,8 +90,48 @@ export default function CreateDocument() {
     const template = templates.find((t) => t.id === templateId);
     if (template) {
       setTitle(template.name);
-      setContent(template.content || "");
+      const templateContent = template.content || "";
+      setContent(templateContent);
+
+      const extractedNames = extractTemplateVariables(templateContent);
+
+      if (extractedNames.length > 0) {
+        // Found variables, show modal to fill them
+        const extractedVars = extractedNames.map((varName) => {
+          const varDef = dynamicVariables.find(
+            (v) => v.value === `{${varName}}`,
+          );
+          return {
+            name: varName,
+            value: varDef?.label || varName,
+          };
+        });
+
+        setTemplateVariables(extractedVars);
+        // Initialize variable values
+        const initialValues: Record<string, string> = {};
+        extractedVars.forEach((v) => {
+          initialValues[v.name] = "";
+        });
+        setVariableValues(initialValues);
+        setShowVariableModal(true);
+      }
     }
+  };
+
+  const handleApplyVariables = () => {
+    let updatedContent = content;
+
+    // Replace all variable placeholders with their values
+    Object.entries(variableValues).forEach(([varName, varValue]) => {
+      const placeholder = `{${varName}}`;
+      updatedContent = updatedContent.replaceAll(placeholder, varValue);
+    });
+
+    setContent(updatedContent);
+    setShowVariableModal(false);
+    setTemplateVariables([]);
+    setVariableValues({});
   };
 
   const handleCreateDocument = async (e: React.FormEvent) => {
@@ -185,6 +268,60 @@ export default function CreateDocument() {
           </div>
         </div>
       </main>
+
+      {/* Variable Modal */}
+      {showVariableModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Fill Template Variables
+              </h2>
+
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {templateVariables.map((variable) => (
+                  <div key={variable.name}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {variable.value}
+                    </label>
+                    <input
+                      type="text"
+                      value={variableValues[variable.name] || ""}
+                      onChange={(e) => {
+                        setVariableValues({
+                          ...variableValues,
+                          [variable.name]: e.target.value,
+                        });
+                      }}
+                      placeholder={`Enter ${variable.value.toLowerCase()}`}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowVariableModal(false);
+                    setTemplateVariables([]);
+                    setVariableValues({});
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleApplyVariables}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Apply Variables
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

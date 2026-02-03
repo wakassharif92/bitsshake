@@ -379,14 +379,52 @@ export default function EditDocument() {
             />
           </div>
 
-          {/* Rich text editor - full remaining height */}
-          <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-lg border border-gray-300">
-            <RichEditor
-              content={content}
-              onChange={setContent}
-              readOnly={document.status !== "draft"}
-            />
-          </div>
+          {/* Document content */}
+          {document.is_uploaded ? (
+            <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-lg border border-gray-300">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Uploaded PDF
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Manage recipients on the right.
+                  </p>
+                </div>
+                {document.file_url && (
+                  <a
+                    href={document.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                  >
+                    Open in New Tab
+                  </a>
+                )}
+              </div>
+              {document.file_url ? (
+                <iframe
+                  title="Uploaded PDF"
+                  src={document.file_url}
+                  className="flex-1 w-full"
+                />
+              ) : (
+                <div className="p-6">
+                  <p className="text-sm text-red-600">
+                    PDF file link not available.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-lg border border-gray-300">
+              <RichEditor
+                content={content}
+                onChange={setContent}
+                readOnly={document.status !== "draft"}
+              />
+            </div>
+          )}
         </div>
 
         {/* Recipients sidebar */}

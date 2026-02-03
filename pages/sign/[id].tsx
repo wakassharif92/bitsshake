@@ -11,6 +11,7 @@ export default function SignDocument() {
   const { id, email } = router.query;
   const [document, setDocument] = useState<Document | null>(null);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
+  const [allRecipients, setAllRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
   const [signatureType, setSignatureType] = useState<"typed" | "draw">("typed");
@@ -55,6 +56,20 @@ export default function SignDocument() {
       }
 
       setRecipient(recipientData);
+
+      // Fetch all signers via API to bypass RLS for viewers/signers
+      const signersResponse = await fetch(
+        `/api/get-signers?documentId=${encodeURIComponent(
+          String(id),
+        )}&email=${encodeURIComponent(String(email))}`,
+      );
+
+      if (signersResponse.ok) {
+        const signersData = await signersResponse.json();
+        setAllRecipients(signersData || []);
+      } else {
+        setAllRecipients([]);
+      }
       setLoading(false);
     };
 
@@ -81,9 +96,9 @@ export default function SignDocument() {
       );
       const geoData = await geoResponse.json();
       setGeoDebug(JSON.stringify({ ip, geoData }, null, 2));
-      if (geoData.error) {
-        alert(`Location lookup error: ${geoData.error}`);
-      }
+      //   if (geoData.error) {
+      //     alert(`Location lookup error: ${geoData.error}`);
+      //   }
       const country = geoData.country || "Unknown";
       const city = geoData.city || "Unknown";
 
@@ -199,7 +214,7 @@ export default function SignDocument() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {geoDebug && (
+      {/* {geoDebug && (
         <div
           style={{
             background: "#f5f5f5",
@@ -215,7 +230,7 @@ export default function SignDocument() {
             {geoDebug}
           </pre>
         </div>
-      )}
+      )} */}
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -243,6 +258,53 @@ export default function SignDocument() {
                   style={{ lineHeight: "1.75" }}
                 />
               </div>
+
+              {/* Signatures section */}
+              {allRecipients.filter(
+                (r) => r.role === "signer" && r.status === "signed",
+              ).length > 0 && (
+                <div className="mt-12 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                    Signatures
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {allRecipients
+                      .filter(
+                        (r) => r.role === "signer" && r.status === "signed",
+                      )
+                      .map((signer) => (
+                        <div
+                          key={signer.id}
+                          className="border-t-2 border-gray-900 pt-4"
+                        >
+                          <p
+                            style={{
+                              fontSize: "24px",
+                              fontFamily: "cursive",
+                            }}
+                            className="text-gray-900 mb-2"
+                          >
+                            {signer.signature_text || "_________________"}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {signer.name || signer.email}
+                          </p>
+                          {signer.name && (
+                            <p className="text-xs text-gray-500">
+                              {signer.email}
+                            </p>
+                          )}
+                          {signer.signed_at && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Signed:{" "}
+                              {new Date(signer.signed_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

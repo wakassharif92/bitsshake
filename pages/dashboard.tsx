@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,12 +11,25 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [signOutLoading, setSignOutLoading] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const fetchDocuments = async (userId: string) => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowCreateMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchDocuments = async (sessionUserId: string) => {
     const { data: docsData } = await supabase
       .from("documents")
       .select("*")
-      .eq("admin_id", userId)
+      .eq("admin_id", sessionUserId)
       .order("created_at", { ascending: false });
 
     setDocuments(docsData || []);
@@ -125,11 +138,36 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         {/* Action buttons */}
         <div className="mb-8 flex gap-4">
-          <Link href="/documents/create">
-            <button className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium">
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowCreateMenu(!showCreateMenu)}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+            >
               Create Document
             </button>
-          </Link>
+
+            {/* Popover Menu */}
+            {showCreateMenu && (
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                <Link href="/documents/create">
+                  <button
+                    onClick={() => setShowCreateMenu(false)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 font-medium text-gray-900 border-b border-gray-200"
+                  >
+                    ✏️ Write Document
+                  </button>
+                </Link>
+                <Link href="/documents/upload">
+                  <button
+                    onClick={() => setShowCreateMenu(false)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 font-medium text-gray-900"
+                  >
+                    ↑ Upload Document
+                  </button>
+                </Link>
+              </div>
+            )}
+          </div>
           <Link href="/templates">
             <button className="px-6 py-2 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300 font-medium">
               Manage Templates
