@@ -6,6 +6,7 @@ import { Document, Recipient } from "@/lib/types";
 import Image from "next/image";
 
 export default function SignDocument() {
+  const [geoDebug, setGeoDebug] = useState<string | null>(null);
   const router = useRouter();
   const { id, email } = router.query;
   const [document, setDocument] = useState<Document | null>(null);
@@ -79,6 +80,10 @@ export default function SignDocument() {
         `/api/get-location?ip=${encodeURIComponent(ip)}`,
       );
       const geoData = await geoResponse.json();
+      setGeoDebug(JSON.stringify({ ip, geoData }, null, 2));
+      if (geoData.error) {
+        alert(`Location lookup error: ${geoData.error}`);
+      }
       const country = geoData.country || "Unknown";
       const city = geoData.city || "Unknown";
 
@@ -115,23 +120,25 @@ export default function SignDocument() {
         },
       ]);
 
-      alert("Document signed successfully!");
+      alert(
+        "Document signed successfully!\n\nGeoData: " +
+          JSON.stringify({ ip, geoData }, null, 2),
+      );
 
       // Fetch ALL signer-type recipients to check if all have signed
       const { data: allRecipients, error: fetchError } = await supabase
         .from("recipients")
         .select("*")
-        .eq("document_id", document.id)
-        .eq("role", "signer");
+        .eq("document_id", document.id);
 
       if (fetchError) {
         console.error("Error fetching recipients:", fetchError);
       }
 
       if (allRecipients && allRecipients.length > 0) {
-        const allSignersSigned = allRecipients.every(
-          (r) => r.status === "signed",
-        );
+        const signers = allRecipients.filter((r) => r.role === "signer");
+        const allSignersSigned =
+          signers.length > 0 && signers.every((r) => r.status === "signed");
 
         if (allSignersSigned) {
           // Call API to update document status (bypasses RLS)
@@ -167,7 +174,10 @@ export default function SignDocument() {
         }
       }
 
-      router.push("/thank-you");
+      // Wait 3 seconds so user can see the alert and debug info
+      setTimeout(() => {
+        router.push("/thank-you");
+      }, 3000);
     } catch (err: any) {
       alert("Error signing document: " + err.message);
     } finally {
@@ -189,6 +199,23 @@ export default function SignDocument() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {geoDebug && (
+        <div
+          style={{
+            background: "#f5f5f5",
+            color: "#333",
+            padding: 12,
+            margin: 12,
+            borderRadius: 8,
+            fontSize: 13,
+          }}
+        >
+          <b>GeoData Debug:</b>
+          <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+            {geoDebug}
+          </pre>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">

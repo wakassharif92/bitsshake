@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -20,6 +20,13 @@ export default function EditDocument() {
   const [saving, setSaving] = useState(false);
   const [addingRecipient, setAddingRecipient] = useState(false);
   const [sendingDocument, setSendingDocument] = useState(false);
+  const [showSendPopover, setShowSendPopover] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [generatedLinks, setGeneratedLinks] = useState<{
+    [recipientId: string]: string;
+  }>({});
+  const [lockingDocument, setLockingDocument] = useState(false);
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -149,7 +156,8 @@ export default function EditDocument() {
     }
   };
 
-  const handleSendDocument = async () => {
+  // Send via Email (current behavior)
+  const handleSendViaEmail = async () => {
     if (!id || recipients.length === 0) {
       alert("Please add at least one recipient before sending");
       return;
@@ -199,6 +207,53 @@ export default function EditDocument() {
     }
   };
 
+  // Send Link: lock document and show modal for link generation
+  const handleSendViaLink = async () => {
+    if (!id || recipients.length === 0) {
+      alert("Please add at least one recipient before sending");
+      setShowSendPopover(false);
+      return;
+    }
+    if (
+      !confirm(
+        "Once you generate links, the document will be locked and cannot be edited. Continue?",
+      )
+    ) {
+      setShowSendPopover(false);
+      return;
+    }
+    setLockingDocument(true);
+    try {
+      await supabase.from("documents").update({ status: "sent" }).eq("id", id);
+      setDocument((prev) => (prev ? { ...prev, status: "sent" } : prev)); // update local state immediately
+      // Pre-populate all links for recipients
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        (typeof window !== "undefined" ? window.location.origin : "");
+      const links: { [recipientId: string]: string } = {};
+      recipients.forEach((recipient) => {
+        links[recipient.id] =
+          `${baseUrl}/sign/${id}?email=${encodeURIComponent(recipient.email)}`;
+      });
+      setGeneratedLinks(links);
+      setShowLinkModal(true);
+      setShowSendPopover(false);
+    } catch (err: any) {
+      alert("Error locking document: " + err.message);
+    } finally {
+      setLockingDocument(false);
+    }
+  };
+
+  // Generate link for a recipient (after document is locked)
+  const handleGenerateLink = (recipient: Recipient) => {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const link = `${baseUrl}/sign/${id}?email=${encodeURIComponent(recipient.email)}`;
+    setGeneratedLinks((prev) => ({ ...prev, [recipient.id]: link }));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -240,20 +295,68 @@ export default function EditDocument() {
               >
                 {saving ? "Saving..." : "Save Document"}
               </button>
-              <button
-                onClick={handleSendDocument}
-                disabled={document.status !== "draft" || sendingDocument}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {sendingDocument ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Sending...
-                  </>
-                ) : (
-                  "Send to Recipients"
+              <div className="relative">
+                <button
+                  ref={sendButtonRef}
+                  onClick={() => setShowSendPopover((v) => !v)}
+                  disabled={sendingDocument}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {sendingDocument ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    "Send to Recipients"
+                  )}
+                </button>
+                {showSendPopover && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50">
+                    <button
+                      onClick={() => {
+                        setShowSendPopover(false);
+                        handleSendViaEmail();
+                      }}
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
+                      disabled={sendingDocument || document.status !== "draft"}
+                    >
+                      Send via Email
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSendPopover(false);
+                        if (document.status === "draft") {
+                          handleSendViaLink();
+                        } else {
+                          // Pre-populate all links for recipients if not already
+                          if (
+                            Object.keys(generatedLinks).length !==
+                            recipients.length
+                          ) {
+                            const baseUrl =
+                              process.env.NEXT_PUBLIC_APP_URL ||
+                              (typeof window !== "undefined"
+                                ? window.location.origin
+                                : "");
+                            const links: { [recipientId: string]: string } = {};
+                            recipients.forEach((recipient) => {
+                              links[recipient.id] =
+                                `${baseUrl}/sign/${id}?email=${encodeURIComponent(recipient.email)}`;
+                            });
+                            setGeneratedLinks(links);
+                          }
+                          setShowLinkModal(true);
+                        }
+                      }}
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
+                      disabled={sendingDocument}
+                    >
+                      {document.status === "draft" ? "Send Link" : "View Links"}
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -272,12 +375,17 @@ export default function EditDocument() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              disabled={document.status !== "draft"}
             />
           </div>
 
           {/* Rich text editor - full remaining height */}
           <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-lg border border-gray-300">
-            <RichEditor content={content} onChange={setContent} />
+            <RichEditor
+              content={content}
+              onChange={setContent}
+              readOnly={document.status !== "draft"}
+            />
           </div>
         </div>
 
@@ -351,7 +459,87 @@ export default function EditDocument() {
         </div>
       </main>
 
-      {/* Add recipient modal */}
+      {/* Send Link Modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {document?.status === "draft"
+                ? "Generate Signing Links"
+                : "Signing Links"}
+            </h3>
+            <p className="text-sm text-gray-700 mb-4">
+              Links are unique for each recipient.{" "}
+              {document?.status === "draft"
+                ? "Once generated, you can copy and share them manually."
+                : "Copy and share them manually."}
+            </p>
+            <div className="space-y-4 max-h-72 overflow-y-auto">
+              {recipients.map((recipient) => (
+                <div
+                  key={recipient.id}
+                  className="border border-gray-200 rounded p-3 flex flex-col gap-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-900 text-sm">
+                      {recipient.email}
+                    </span>
+                    {document?.status === "draft" ? (
+                      !generatedLinks[recipient.id] ? (
+                        <button
+                          onClick={() => handleGenerateLink(recipient)}
+                          className="text-green-600 hover:text-green-800 text-xs border border-green-200 rounded px-2 py-1"
+                        >
+                          Generate Link
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              generatedLinks[recipient.id],
+                            );
+                            alert("Link copied to clipboard!");
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1"
+                        >
+                          Copy Link
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            generatedLinks[recipient.id],
+                          );
+                          alert("Link copied to clipboard!");
+                        }}
+                        className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1"
+                      >
+                        Copy Link
+                      </button>
+                    )}
+                  </div>
+                  {((document?.status === "draft" &&
+                    generatedLinks[recipient.id]) ||
+                    document?.status !== "draft") && (
+                    <div className="break-all text-xs text-gray-700 bg-gray-50 rounded p-2 border border-gray-100 mt-1">
+                      {generatedLinks[recipient.id]}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-6">
+              <button
+                onClick={() => setShowLinkModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-md hover:bg-gray-400"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">

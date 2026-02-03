@@ -34,14 +34,20 @@ import { useEffect, useState } from "react";
 interface RichEditorProps {
   content: string;
   onChange: (content: string) => void;
+  readOnly?: boolean;
 }
 
-export default function RichEditor({ content, onChange }: RichEditorProps) {
+export default function RichEditor({
+  content,
+  onChange,
+  readOnly = false,
+}: RichEditorProps) {
   const [mounted, setMounted] = useState(false);
   const [textColor, setTextColor] = useState("#000000");
   const [highlightColor, setHighlightColor] = useState("#FFF00");
 
   const editor = useEditor({
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({
         heading: {
