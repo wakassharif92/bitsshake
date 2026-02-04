@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
 import { Document, Recipient } from "@/lib/types";
+import ChatPanel from "@/components/ChatPanel";
 
 const RichEditor = dynamic(() => import("@/components/RichEditor"), {
   ssr: false,
@@ -26,6 +27,8 @@ export default function EditDocument() {
     [recipientId: string]: string;
   }>({});
   const [lockingDocument, setLockingDocument] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
   const sendButtonRef = useRef<HTMLButtonElement>(null);
 
   // Modal state
@@ -49,6 +52,12 @@ export default function EditDocument() {
         router.push("/login");
         return;
       }
+
+      // Store current user info
+      setCurrentUserEmail(session.user.email || "");
+      setCurrentUserName(
+        session.user.user_metadata?.full_name || session.user.email || "",
+      );
 
       // Fetch document
       const { data: docData } = await supabase
@@ -427,73 +436,92 @@ export default function EditDocument() {
           )}
         </div>
 
-        {/* Recipients sidebar */}
+        {/* Recipients sidebar or Chat panel */}
         <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
           <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium text-gray-900">Recipients</h2>
-              <button
-                onClick={() => setShowModal(true)}
-                disabled={document.status !== "draft"}
-                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
-              >
-                + Add
-              </button>
-            </div>
+            {/* Chat panel - Always show for all document statuses */}
+            <ChatPanel
+              documentId={String(id)}
+              userEmail={currentUserEmail}
+              userName={currentUserName}
+              isAdmin={true}
+            />
+          </div>
 
-            <div className="space-y-3">
-              {recipients.length === 0 ? (
-                <p className="text-gray-500 text-sm">No recipients added yet</p>
-              ) : (
-                recipients.map((recipient) => (
-                  <div
-                    key={recipient.id}
-                    className="border border-gray-200 rounded-lg p-3"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium text-sm text-gray-900">
-                          {recipient.email}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Role:{" "}
-                          <span className="font-medium">{recipient.role}</span>
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          Status:{" "}
-                          <span
-                            className={`font-medium ${
-                              recipient.status === "pending"
-                                ? "text-yellow-600"
-                                : recipient.status === "signed"
-                                  ? "text-green-600"
-                                  : "text-blue-600"
-                            }`}
-                          >
-                            {recipient.status}
-                          </span>
-                        </p>
-                        {recipient.signed_at && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            Signed:{" "}
-                            {new Date(recipient.signed_at).toLocaleString()}
+          {/* Recipients list - Only show when in draft status */}
+          {document.status === "draft" && (
+            <div className="border-t border-gray-200 p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Recipients
+                </h2>
+                <button
+                  onClick={() => setShowModal(true)}
+                  disabled={document.status !== "draft"}
+                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                >
+                  + Add
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {recipients.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    No recipients added yet
+                  </p>
+                ) : (
+                  recipients.map((recipient) => (
+                    <div
+                      key={recipient.id}
+                      className="border border-gray-200 rounded-lg p-3"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium text-sm text-gray-900">
+                            {recipient.email}
                           </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Role:{" "}
+                            <span className="font-medium">
+                              {recipient.role}
+                            </span>
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Status:{" "}
+                            <span
+                              className={`font-medium ${
+                                recipient.status === "pending"
+                                  ? "text-yellow-600"
+                                  : recipient.status === "signed"
+                                    ? "text-green-600"
+                                    : "text-blue-600"
+                              }`}
+                            >
+                              {recipient.status}
+                            </span>
+                          </p>
+                          {recipient.signed_at && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              Signed:{" "}
+                              {new Date(recipient.signed_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        {document.status === "draft" && (
+                          <button
+                            onClick={() => handleRemoveRecipient(recipient.id)}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            Remove
+                          </button>
                         )}
                       </div>
-                      {document.status === "draft" && (
-                        <button
-                          onClick={() => handleRemoveRecipient(recipient.id)}
-                          className="text-red-600 hover:text-red-800 text-xs"
-                        >
-                          Remove
-                        </button>
-                      )}
                     </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 

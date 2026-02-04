@@ -48,6 +48,19 @@ export interface AuditLog {
   details?: Record<string, any>;
 }
 
+export interface ChatMessage {
+  id: string;
+  document_id: string;
+  sender_email: string;
+  sender_name: string;
+  sender_ip?: string;
+  sender_location?: string;
+  message: string;
+  attachment_url?: string;
+  attachment_name?: string;
+  created_at: string;
+}
+
 export interface User {
   id: string;
   email: string;

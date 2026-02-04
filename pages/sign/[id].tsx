@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Document, Recipient } from "@/lib/types";
 import Image from "next/image";
+import ChatPanel from "@/components/ChatPanel";
 
 export default function SignDocument() {
   const [geoDebug, setGeoDebug] = useState<string | null>(null);
@@ -17,6 +18,7 @@ export default function SignDocument() {
   const [signatureType, setSignatureType] = useState<"typed" | "draw">("typed");
   const [signatureText, setSignatureText] = useState("");
   const [signatureFont, setSignatureFont] = useState("cursive");
+  const [userName, setUserName] = useState("");
 
   const fonts = [
     { name: "Cursive", value: "cursive" },
@@ -35,6 +37,7 @@ export default function SignDocument() {
         .eq("id", id)
         .single();
 
+      // Only block draft documents, allow all others (sent, signed, completed, uploaded)
       if (!docData || docData.status === "draft") {
         router.push("/");
         return;
@@ -56,6 +59,9 @@ export default function SignDocument() {
       }
 
       setRecipient(recipientData);
+
+      // Set user name for chat
+      setUserName(recipientData.name || String(email) || "");
 
       // Fetch all signers via API to bypass RLS for viewers/signers
       const signersResponse = await fetch(
@@ -460,6 +466,24 @@ export default function SignDocument() {
                   </p>
                 </div>
               )}
+
+              {/* Chat Panel - Always show for all document statuses */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Discussion
+                </h3>
+                <div
+                  style={{ height: "400px" }}
+                  className="bg-white rounded-lg border border-gray-200"
+                >
+                  <ChatPanel
+                    documentId={String(id)}
+                    userEmail={String(email)}
+                    userName={userName}
+                    isAdmin={false}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

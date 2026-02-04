@@ -1,9 +1,3 @@
 {
-  "name": "bitsshake",
-  "crons": [
-    {
-      "path": "/api/cleanup-completed",
-      "schedule": "0 * * * *"
-    }
-  ]
+  "name": "bitsshake"
 }

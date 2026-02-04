@@ -44,7 +44,6 @@ export default async function handler(
       .from("recipients")
       .select("id,name,email,signature_text,signed_at,role,status")
       .eq("document_id", documentId)
-      .eq("role", "signer")
       .order("created_at", { ascending: true });
 
     if (error) {

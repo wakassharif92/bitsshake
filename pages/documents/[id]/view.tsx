@@ -4,9 +4,12 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Document, Recipient, AuditLog } from "@/lib/types";
+import ChatPanel from "@/components/ChatPanel";
 
 export default function ViewDocument() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
   const [showSendPopover, setShowSendPopover] = useState(false);
   const [sendingDocument, setSendingDocument] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -69,6 +72,28 @@ export default function ViewDocument() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPublicView, setIsPublicView] = useState(false);
+  const [showLocation, setShowLocation] = useState(true);
+
+  const fetchConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("config")
+        .select("isEnable")
+        .eq("key", "showlocation")
+        .single();
+
+      if (!error && data) {
+        setShowLocation(data.isEnable === true);
+      }
+    } catch (err) {
+      console.error("Error fetching config:", err);
+      setShowLocation(true); // Default to showing location if fetch fails
+    }
+  };
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -83,6 +108,11 @@ export default function ViewDocument() {
 
       if (userId) {
         setIsPublicView(false);
+        setCurrentUserEmail(session?.user?.email || "");
+        setCurrentUserName(
+          session?.user?.user_metadata?.full_name || session?.user?.email || "",
+        );
+
         // Fetch document
         const { data: docData } = await supabase
           .from("documents")
@@ -124,6 +154,8 @@ export default function ViewDocument() {
       }
 
       setIsPublicView(true);
+      setCurrentUserEmail(String(email));
+
       const response = await fetch(
         `/api/public-document?documentId=${encodeURIComponent(
           String(id),
@@ -138,6 +170,13 @@ export default function ViewDocument() {
       const data = await response.json();
       setDocument(data.document || null);
       setRecipients(data.recipients || []);
+
+      // Set the user name from the recipient data
+      const currentRecipient = (data.recipients || []).find(
+        (r: Recipient) => r.email === email,
+      );
+      setCurrentUserName(currentRecipient?.name || String(email));
+
       setAuditLogs([]);
       setLoading(false);
     };
@@ -217,11 +256,10 @@ export default function ViewDocument() {
                   </button>
                 );
               })()}
-              {/* Show Send to Recipients button for admin only, and only if not completed */}
+              {/* Show Send to Recipients button for admin only */}
               {currentUserId &&
                 document &&
-                currentUserId === document.admin_id &&
-                document.status !== "completed" && (
+                currentUserId === document.admin_id && (
                   <div className="relative">
                     <button
                       onClick={() => setShowSendPopover((v) => !v)}
@@ -409,17 +447,21 @@ export default function ViewDocument() {
                               Signed:{" "}
                               {new Date(recipient.signed_at).toLocaleString()}
                             </p>
-                            {recipient.signed_by_country &&
-                              recipient.signed_by_city && (
-                                <p className="text-xs text-gray-600">
-                                  Location: {recipient.signed_by_city},{" "}
-                                  {recipient.signed_by_country}
-                                </p>
-                              )}
-                            {recipient.signed_by_ip && (
-                              <p className="text-xs text-gray-600">
-                                IP: {recipient.signed_by_ip}
-                              </p>
+                            {showLocation && (
+                              <>
+                                {recipient.signed_by_country &&
+                                  recipient.signed_by_city && (
+                                    <p className="text-xs text-gray-600">
+                                      Location: {recipient.signed_by_city},{" "}
+                                      {recipient.signed_by_country}
+                                    </p>
+                                  )}
+                                {recipient.signed_by_ip && (
+                                  <p className="text-xs text-gray-600">
+                                    IP: {recipient.signed_by_ip}
+                                  </p>
+                                )}
+                              </>
                             )}
                           </>
                         )}
@@ -448,6 +490,26 @@ export default function ViewDocument() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Chat Panel - Always show for all document statuses */}
+            <div
+              className="bg-white shadow rounded-lg"
+              style={{ height: "500px" }}
+            >
+              <div className="h-full p-4">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">
+                  Discussion
+                </h2>
+                <div className="h-[calc(100%-3rem)]">
+                  <ChatPanel
+                    documentId={String(id)}
+                    userEmail={currentUserEmail}
+                    userName={currentUserName}
+                    isAdmin={currentUserId === document.admin_id}
+                  />
+                </div>
               </div>
             </div>
 
@@ -482,17 +544,21 @@ export default function ViewDocument() {
                           {log.details.recipient_company}
                         </p>
                       )}
-                      {log.details?.city && log.details?.country && (
-                        <p className="text-xs text-gray-700">
-                          <span className="font-medium">Location:</span>{" "}
-                          {log.details.city}, {log.details.country}
-                        </p>
-                      )}
-                      {log.ip_address && (
-                        <p className="text-xs text-gray-700">
-                          <span className="font-medium">IP:</span>{" "}
-                          {log.ip_address}
-                        </p>
+                      {showLocation && (
+                        <>
+                          {log.details?.city && log.details?.country && (
+                            <p className="text-xs text-gray-700">
+                              <span className="font-medium">Location:</span>{" "}
+                              {log.details.city}, {log.details.country}
+                            </p>
+                          )}
+                          {log.ip_address && (
+                            <p className="text-xs text-gray-700">
+                              <span className="font-medium">IP:</span>{" "}
+                              {log.ip_address}
+                            </p>
+                          )}
+                        </>
                       )}
                       <p className="text-xs text-gray-500 mt-1">
                         {new Date(log.timestamp).toLocaleString()}
@@ -505,6 +571,55 @@ export default function ViewDocument() {
           </div>
         </div>
       </main>
+
+      {/* Link Modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Signing Links
+            </h3>
+            <p className="text-sm text-gray-700 mb-4">
+              Copy and share these links with recipients.
+            </p>
+            <div className="space-y-4 max-h-72 overflow-y-auto">
+              {recipients.map((recipient) => (
+                <div
+                  key={recipient.id}
+                  className="border border-gray-200 rounded p-3 flex flex-col gap-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-900 text-sm">
+                      {recipient.email}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const baseUrl =
+                          process.env.NEXT_PUBLIC_APP_URL ||
+                          (typeof window !== "undefined"
+                            ? window.location.origin
+                            : "");
+                        const link = `${baseUrl}/sign/${id}?email=${encodeURIComponent(recipient.email)}`;
+                        navigator.clipboard.writeText(link);
+                        alert("Link copied to clipboard!");
+                      }}
+                      className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1"
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowLinkModal(false)}
+              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
