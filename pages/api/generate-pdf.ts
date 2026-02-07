@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { generateDocumentPDF } from "@/lib/pdf";
 
 export default async function handler(
@@ -16,7 +16,7 @@ export default async function handler(
     const { documentId } = req.body;
 
     // Fetch document
-    const { data: document, error: docError } = await supabase
+    const { data: document, error: docError } = await supabaseAdmin
       .from("documents")
       .select("*")
       .eq("id", documentId)
@@ -29,7 +29,7 @@ export default async function handler(
     }
 
     // Fetch recipients
-    const { data: recipients, error: recipientsError } = await supabase
+    const { data: recipients, error: recipientsError } = await supabaseAdmin
       .from("recipients")
       .select("*")
       .eq("document_id", documentId);
@@ -41,7 +41,7 @@ export default async function handler(
     }
 
     // Fetch audit logs
-    const { data: auditLogs, error: logsError } = await supabase
+    const { data: auditLogs, error: logsError } = await supabaseAdmin
       .from("audit_logs")
       .select("*")
       .eq("document_id", documentId)
@@ -53,8 +53,30 @@ export default async function handler(
         .json({ success: false, error: "Failed to fetch audit logs" });
     }
 
+    // Fetch chat signature messages
+    const { data: chatMessages, error: chatError } = await supabaseAdmin
+      .from("chat_messages")
+      .select("*")
+      .eq("document_id", documentId)
+      .order("created_at", { ascending: false });
+
+    if (chatError) {
+      return res
+        .status(500)
+        .json({ success: false, error: "Failed to fetch chat messages" });
+    }
+
+    const chatSignatures = (chatMessages || []).filter((m: any) =>
+      m.message?.startsWith("[SIGNATURE]"),
+    );
+
     // Generate PDF
-    const pdf = await generateDocumentPDF(document, recipients, auditLogs);
+    const pdf = await generateDocumentPDF(
+      document,
+      recipients,
+      auditLogs,
+      chatSignatures,
+    );
     const pdfBytes = pdf.output("arraybuffer");
 
     // Set response headers
@@ -67,11 +89,9 @@ export default async function handler(
     res.status(200).send(Buffer.from(pdfBytes));
   } catch (error: any) {
     console.error("Error generating PDF:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        error: error.message || "Internal server error",
-      });
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Internal server error",
+    });
   }
 }

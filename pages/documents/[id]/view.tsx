@@ -1,9 +1,9 @@
 // (Removed duplicate ViewDocument function. The main implementation follows below.)
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Document, Recipient, AuditLog } from "@/lib/types";
+import { Document, Recipient, AuditLog, ChatMessage } from "@/lib/types";
 import ChatPanel from "@/components/ChatPanel";
 
 export default function ViewDocument() {
@@ -73,6 +73,8 @@ export default function ViewDocument() {
   const [loading, setLoading] = useState(true);
   const [isPublicView, setIsPublicView] = useState(false);
   const [showLocation, setShowLocation] = useState(true);
+  const [chatSignatures, setChatSignatures] = useState<ChatMessage[]>([]);
+  const hasLoggedOpenRef = useRef(false);
 
   const fetchConfig = async () => {
     try {
@@ -99,6 +101,125 @@ export default function ViewDocument() {
     if (!id) return;
 
     const fetchData = async () => {
+      const logDocumentOpened = async (actorEmail: string, source: string) => {
+        if (hasLoggedOpenRef.current) return;
+        try {
+          const ipResponse = await fetch("https://api.ipify.org?format=json");
+          const ipData = ipResponse.ok ? await ipResponse.json() : null;
+          const ip = ipData?.ip;
+
+          let locationLabel = "Unknown";
+          if (ip) {
+            const geoResponse = await fetch(
+              `/api/get-location?ip=${encodeURIComponent(ip)}`,
+            );
+            if (geoResponse.ok) {
+              const geoData = await geoResponse.json();
+              const city = geoData.city || "Unknown";
+              const country = geoData.country || "Unknown";
+              locationLabel = `${city}, ${country}`;
+            }
+          }
+
+          const clientTime = new Date().toLocaleString();
+          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const logEntry = {
+            document_id: String(id),
+            action: "DOCUMENT_OPENED",
+            actor_email: actorEmail,
+            ip_address: ip,
+            user_agent: navigator.userAgent,
+            details: {
+              location: locationLabel,
+              source,
+              client_time: clientTime,
+              time_zone: timeZone,
+            },
+            timestamp: new Date().toISOString(),
+          };
+
+          const logResponse = await fetch("/api/log-document-open", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              documentId: String(id),
+              actorEmail,
+              ip,
+              userAgent: navigator.userAgent,
+              location: locationLabel,
+              source,
+              clientTime,
+              timeZone,
+            }),
+          });
+
+          if (!logResponse.ok) {
+            const logData = await logResponse.json();
+            throw new Error(logData?.error || "Failed to log document open");
+          }
+
+          setAuditLogs((prev) => [logEntry as AuditLog, ...prev]);
+
+          hasLoggedOpenRef.current = true;
+        } catch (err) {
+          console.error("Error logging document open:", err);
+        }
+      };
+      const fetchChatSignatures = async (userEmail: string) => {
+        try {
+          const chatResponse = await fetch(
+            `/api/chat-messages?documentId=${encodeURIComponent(
+              String(id),
+            )}&userEmail=${encodeURIComponent(userEmail)}`,
+          );
+          if (chatResponse.ok) {
+            const chatData = await chatResponse.json();
+            const messages: ChatMessage[] = chatData.messages || [];
+            const signatures = messages.filter((m) =>
+              m.message?.startsWith("[SIGNATURE]"),
+            );
+            setChatSignatures(signatures);
+          } else {
+            setChatSignatures([]);
+          }
+        } catch (err) {
+          console.error("Error fetching chat signatures:", err);
+          setChatSignatures([]);
+        }
+      };
+
+      const emailFromLink = typeof email === "string" ? email : "";
+      if (emailFromLink) {
+        setIsPublicView(true);
+        setCurrentUserEmail(emailFromLink);
+        await fetchChatSignatures(emailFromLink);
+
+        const response = await fetch(
+          `/api/public-document?documentId=${encodeURIComponent(
+            String(id),
+          )}&email=${encodeURIComponent(emailFromLink)}`,
+        );
+
+        if (!response.ok) {
+          router.push("/");
+          return;
+        }
+
+        const data = await response.json();
+        setDocument(data.document || null);
+        setRecipients(data.recipients || []);
+
+        const currentRecipient = (data.recipients || []).find(
+          (r: Recipient) => r.email === emailFromLink,
+        );
+        setCurrentUserName(currentRecipient?.name || emailFromLink);
+        await logDocumentOpened(emailFromLink, "public_link");
+
+        setAuditLogs([]);
+        setLoading(false);
+        return;
+      }
+
       // Get current user
       const {
         data: { session },
@@ -112,6 +233,7 @@ export default function ViewDocument() {
         setCurrentUserName(
           session?.user?.user_metadata?.full_name || session?.user?.email || "",
         );
+        await fetchChatSignatures(session?.user?.email || "");
 
         // Fetch document
         const { data: docData } = await supabase
@@ -145,44 +267,42 @@ export default function ViewDocument() {
 
         setAuditLogs(logsData || []);
         setLoading(false);
+        await logDocumentOpened(session?.user?.email || "", "dashboard_view");
         return;
       }
-
-      if (!email) {
-        router.push("/");
-        return;
-      }
-
-      setIsPublicView(true);
-      setCurrentUserEmail(String(email));
-
-      const response = await fetch(
-        `/api/public-document?documentId=${encodeURIComponent(
-          String(id),
-        )}&email=${encodeURIComponent(String(email))}`,
-      );
-
-      if (!response.ok) {
-        router.push("/");
-        return;
-      }
-
-      const data = await response.json();
-      setDocument(data.document || null);
-      setRecipients(data.recipients || []);
-
-      // Set the user name from the recipient data
-      const currentRecipient = (data.recipients || []).find(
-        (r: Recipient) => r.email === email,
-      );
-      setCurrentUserName(currentRecipient?.name || String(email));
-
-      setAuditLogs([]);
-      setLoading(false);
     };
 
     fetchData();
   }, [id, email, router]);
+
+  const getSignatureFontFamily = (style: string) => {
+    if (style === "script") {
+      return "'Brush Script MT', 'Segoe Script', cursive";
+    }
+    if (style === "normal") {
+      return "inherit";
+    }
+    return "'Comic Sans MS', 'Bradley Hand', cursive";
+  };
+
+  const parseChatSignature = (message?: string) => {
+    const signatureBody = message
+      ? message.replace("[SIGNATURE]", "").trim()
+      : "";
+    const [sigName, sigReason, sigStyleRaw] = signatureBody
+      ? signatureBody.split("||").map((part) => part.trim())
+      : ["", "", ""];
+    const sigStyle =
+      sigStyleRaw === "script" || sigStyleRaw === "normal"
+        ? sigStyleRaw
+        : "cursive";
+    return {
+      sigName,
+      sigReason,
+      sigStyle,
+      signatureFontFamily: getSignatureFontFamily(sigStyle),
+    };
+  };
 
   const handleDownloadPDF = async () => {
     // Only check signers for completion
@@ -196,8 +316,33 @@ export default function ViewDocument() {
       );
       return;
     }
+    try {
+      const response = await fetch("/api/generate-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: String(id) }),
+      });
 
-    alert("PDF download feature coming soon!");
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      const filename =
+        (document?.title || "document").replace(/\s+/g, "_") + ".pdf";
+
+      link.href = url;
+      link.download = filename;
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(`Failed to download PDF: ${err.message || "Unknown error"}`);
+    }
   };
 
   if (loading) {
@@ -211,6 +356,58 @@ export default function ViewDocument() {
   if (!document) {
     return <div>Document not found</div>;
   }
+
+  const formatTimeAgo = (dateString: string) => {
+    const diffMs = Date.now() - new Date(dateString).getTime();
+    const seconds = Math.max(1, Math.floor(diffMs / 1000));
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+    return `${seconds} second${seconds > 1 ? "s" : ""} ago`;
+  };
+
+  const aggregatedAuditLogs = (() => {
+    const openMap = new Map<string, { count: number; lastLog: AuditLog }>();
+    const others: AuditLog[] = [];
+
+    auditLogs.forEach((log) => {
+      if (log.action === "DOCUMENT_OPENED") {
+        const key = `${log.actor_email || "unknown"}`;
+        const existing = openMap.get(key);
+        if (!existing) {
+          openMap.set(key, { count: 1, lastLog: log });
+        } else {
+          const existingTime = new Date(existing.lastLog.timestamp).getTime();
+          const currentTime = new Date(log.timestamp).getTime();
+          const lastLog = currentTime > existingTime ? log : existing.lastLog;
+          openMap.set(key, { count: existing.count + 1, lastLog });
+        }
+      } else {
+        others.push(log);
+      }
+    });
+
+    const openEntries = Array.from(openMap.values()).map((entry) => ({
+      type: "open" as const,
+      count: entry.count,
+      log: entry.lastLog,
+    }));
+
+    const normalEntries = others.map((log) => ({
+      type: "normal" as const,
+      log,
+    }));
+
+    return [...openEntries, ...normalEntries].sort((a, b) => {
+      const aTime = new Date(a.log.timestamp).getTime();
+      const bTime = new Date(b.log.timestamp).getTime();
+      return bTime - aTime;
+    });
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -354,6 +551,55 @@ export default function ViewDocument() {
                           )}
                         </div>
                       ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Discussion signatures section */}
+              {chatSignatures.length > 0 && (
+                <div className="mt-12 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                    Signature Agreement
+                  </h3>
+                  <div className="space-y-6">
+                    {chatSignatures.map((sig) => {
+                      const parsed = parseChatSignature(sig.message);
+                      const title = parsed.sigReason
+                        ? `${parsed.sigReason} Signature`
+                        : "Signature";
+                      return (
+                        <div
+                          key={sig.id}
+                          className="border border-gray-200 rounded-lg p-4"
+                        >
+                          <p className="text-sm font-semibold text-gray-900">
+                            {title}
+                          </p>
+                          {parsed.sigName && (
+                            <p
+                              className="mt-2 text-2xl text-gray-900"
+                              style={{
+                                fontFamily: parsed.signatureFontFamily,
+                              }}
+                            >
+                              {parsed.sigName}
+                            </p>
+                          )}
+                          <div className="mt-2 text-xs text-gray-600 space-y-1">
+                            <p>Name: {sig.sender_name || sig.sender_email}</p>
+                            <p>Email: {sig.sender_email}</p>
+                            {sig.sender_location && (
+                              <p>Location: {sig.sender_location}</p>
+                            )}
+                            {sig.sender_ip && <p>IP: {sig.sender_ip}</p>}
+                            <p>
+                              Signed:{" "}
+                              {new Date(sig.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -522,46 +768,65 @@ export default function ViewDocument() {
                 {auditLogs.length === 0 ? (
                   <p className="text-sm text-gray-500">No activity yet</p>
                 ) : (
-                  auditLogs.map((log) => (
+                  aggregatedAuditLogs.map((entry) => (
                     <div
-                      key={log.id}
+                      key={`${entry.log.id}-${entry.type}`}
                       className="text-sm border-l-2 border-gray-300 pl-3 py-2 mb-3 bg-gray-50 p-3 rounded"
                     >
-                      <p className="font-medium text-gray-900">{log.action}</p>
+                      <p className="font-medium text-gray-900">
+                        {entry.type === "open"
+                          ? "DOCUMENT_OPENED"
+                          : entry.log.action}
+                      </p>
                       <p className="text-xs text-gray-700 mt-1">
                         <span className="font-medium">Email:</span>{" "}
-                        {log.actor_email}
+                        {entry.log.actor_email}
                       </p>
-                      {log.details?.recipient_name && (
-                        <p className="text-xs text-gray-700">
-                          <span className="font-medium">Name:</span>{" "}
-                          {log.details.recipient_name}
+                      {entry.type === "open" && (
+                        <p className="text-xs text-gray-700 mt-1">
+                          Opened {entry.count} times
                         </p>
                       )}
-                      {log.details?.recipient_company && (
+                      {entry.log.details?.recipient_name && (
+                        <p className="text-xs text-gray-700">
+                          <span className="font-medium">Name:</span>{" "}
+                          {entry.log.details.recipient_name}
+                        </p>
+                      )}
+                      {entry.log.details?.recipient_company && (
                         <p className="text-xs text-gray-700">
                           <span className="font-medium">Company:</span>{" "}
-                          {log.details.recipient_company}
+                          {entry.log.details.recipient_company}
                         </p>
                       )}
                       {showLocation && (
                         <>
-                          {log.details?.city && log.details?.country && (
+                          {entry.log.details?.location && (
                             <p className="text-xs text-gray-700">
                               <span className="font-medium">Location:</span>{" "}
-                              {log.details.city}, {log.details.country}
+                              {entry.log.details.location}
                             </p>
                           )}
-                          {log.ip_address && (
+                          {entry.log.details?.city &&
+                            entry.log.details?.country && (
+                              <p className="text-xs text-gray-700">
+                                <span className="font-medium">Location:</span>{" "}
+                                {entry.log.details.city},{" "}
+                                {entry.log.details.country}
+                              </p>
+                            )}
+                          {entry.log.ip_address && (
                             <p className="text-xs text-gray-700">
                               <span className="font-medium">IP:</span>{" "}
-                              {log.ip_address}
+                              {entry.log.ip_address}
                             </p>
                           )}
                         </>
                       )}
                       <p className="text-xs text-gray-500 mt-1">
-                        {new Date(log.timestamp).toLocaleString()}
+                        {entry.type === "open"
+                          ? `Last opened: ${formatTimeAgo(entry.log.timestamp)}`
+                          : formatTimeAgo(entry.log.timestamp)}
                       </p>
                     </div>
                   ))

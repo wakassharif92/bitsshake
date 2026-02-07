@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Document, Recipient } from "@/lib/types";
+import { ChatMessage, Document, Recipient } from "@/lib/types";
 import Image from "next/image";
 import ChatPanel from "@/components/ChatPanel";
 
@@ -19,6 +19,8 @@ export default function SignDocument() {
   const [signatureText, setSignatureText] = useState("");
   const [signatureFont, setSignatureFont] = useState("cursive");
   const [userName, setUserName] = useState("");
+  const [chatSignatures, setChatSignatures] = useState<ChatMessage[]>([]);
+  const hasLoggedOpenRef = useRef(false);
 
   const fonts = [
     { name: "Cursive", value: "cursive" },
@@ -29,7 +31,56 @@ export default function SignDocument() {
   useEffect(() => {
     if (!id || !email) return;
 
+    const linkEmailRaw = Array.isArray(email) ? email[0] : email;
+    const linkEmail = linkEmailRaw ? decodeURIComponent(linkEmailRaw) : "";
+
     const fetchData = async () => {
+      const logDocumentOpened = async (actorEmail: string) => {
+        if (hasLoggedOpenRef.current) return;
+        try {
+          const ipResponse = await fetch("https://api.ipify.org?format=json");
+          const ipData = ipResponse.ok ? await ipResponse.json() : null;
+          const ip = ipData?.ip;
+
+          let locationLabel = "Unknown";
+          if (ip) {
+            const geoResponse = await fetch(
+              `/api/get-location?ip=${encodeURIComponent(ip)}`,
+            );
+            if (geoResponse.ok) {
+              const geoData = await geoResponse.json();
+              const city = geoData.city || "Unknown";
+              const country = geoData.country || "Unknown";
+              locationLabel = `${city}, ${country}`;
+            }
+          }
+
+          const logResponse = await fetch("/api/log-document-open", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              documentId: String(id),
+              actorEmail,
+              ip,
+              userAgent: navigator.userAgent,
+              location: locationLabel,
+              source: "sign_link",
+              clientTime: new Date().toLocaleString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            }),
+          });
+
+          if (!logResponse.ok) {
+            const logData = await logResponse.json();
+            throw new Error(logData?.error || "Failed to log document open");
+          }
+
+          hasLoggedOpenRef.current = true;
+        } catch (err) {
+          console.error("Error logging document open:", err);
+        }
+      };
+
       // Fetch document
       const { data: docData } = await supabase
         .from("documents")
@@ -50,7 +101,7 @@ export default function SignDocument() {
         .from("recipients")
         .select("*")
         .eq("document_id", id)
-        .eq("email", email)
+        .eq("email", linkEmail)
         .single();
 
       if (!recipientData) {
@@ -61,13 +112,15 @@ export default function SignDocument() {
       setRecipient(recipientData);
 
       // Set user name for chat
-      setUserName(recipientData.name || String(email) || "");
+      setUserName(recipientData.name || linkEmail || "");
+
+      await logDocumentOpened(linkEmail);
 
       // Fetch all signers via API to bypass RLS for viewers/signers
       const signersResponse = await fetch(
         `/api/get-signers?documentId=${encodeURIComponent(
           String(id),
-        )}&email=${encodeURIComponent(String(email))}`,
+        )}&email=${encodeURIComponent(linkEmail)}`,
       );
 
       if (signersResponse.ok) {
@@ -76,11 +129,62 @@ export default function SignDocument() {
       } else {
         setAllRecipients([]);
       }
+
+      // Fetch discussion signatures from chat
+      try {
+        const chatResponse = await fetch(
+          `/api/chat-messages?documentId=${encodeURIComponent(
+            String(id),
+          )}&userEmail=${encodeURIComponent(linkEmail)}`,
+        );
+        if (chatResponse.ok) {
+          const chatData = await chatResponse.json();
+          const messages: ChatMessage[] = chatData.messages || [];
+          const signatures = messages.filter((m) =>
+            m.message?.startsWith("[SIGNATURE]"),
+          );
+          setChatSignatures(signatures);
+        } else {
+          setChatSignatures([]);
+        }
+      } catch (err) {
+        console.error("Error fetching chat signatures:", err);
+        setChatSignatures([]);
+      }
       setLoading(false);
     };
 
     fetchData();
   }, [id, email, router]);
+
+  const getSignatureFontFamily = (style: string) => {
+    if (style === "script") {
+      return "'Brush Script MT', 'Segoe Script', cursive";
+    }
+    if (style === "normal") {
+      return "inherit";
+    }
+    return "'Comic Sans MS', 'Bradley Hand', cursive";
+  };
+
+  const parseChatSignature = (message?: string) => {
+    const signatureBody = message
+      ? message.replace("[SIGNATURE]", "").trim()
+      : "";
+    const [sigName, sigReason, sigStyleRaw] = signatureBody
+      ? signatureBody.split("||").map((part) => part.trim())
+      : ["", "", ""];
+    const sigStyle =
+      sigStyleRaw === "script" || sigStyleRaw === "normal"
+        ? sigStyleRaw
+        : "cursive";
+    return {
+      sigName,
+      sigReason,
+      sigStyle,
+      signatureFontFamily: getSignatureFontFamily(sigStyle),
+    };
+  };
 
   const handleSign = async () => {
     if (!signatureText.trim() || !recipient || !document) {
@@ -308,6 +412,55 @@ export default function SignDocument() {
                           )}
                         </div>
                       ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Discussion signatures section */}
+              {chatSignatures.length > 0 && (
+                <div className="mt-12 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                    Signature Agreement
+                  </h3>
+                  <div className="space-y-6">
+                    {chatSignatures.map((sig) => {
+                      const parsed = parseChatSignature(sig.message);
+                      const title = parsed.sigReason
+                        ? `${parsed.sigReason} Signature`
+                        : "Signature";
+                      return (
+                        <div
+                          key={sig.id}
+                          className="border border-gray-200 rounded-lg p-4"
+                        >
+                          <p className="text-sm font-semibold text-gray-900">
+                            {title}
+                          </p>
+                          {parsed.sigName && (
+                            <p
+                              className="mt-2 text-2xl text-gray-900"
+                              style={{
+                                fontFamily: parsed.signatureFontFamily,
+                              }}
+                            >
+                              {parsed.sigName}
+                            </p>
+                          )}
+                          <div className="mt-2 text-xs text-gray-600 space-y-1">
+                            <p>Name: {sig.sender_name || sig.sender_email}</p>
+                            <p>Email: {sig.sender_email}</p>
+                            {sig.sender_location && (
+                              <p>Location: {sig.sender_location}</p>
+                            )}
+                            {sig.sender_ip && <p>IP: {sig.sender_ip}</p>}
+                            <p>
+                              Signed:{" "}
+                              {new Date(sig.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

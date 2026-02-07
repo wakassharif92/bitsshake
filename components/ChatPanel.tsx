@@ -21,15 +21,37 @@ export default function ChatPanel({
   const [sending, setSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showLocation, setShowLocation] = useState(true);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureName, setSignatureName] = useState("");
+  const [signatureReason, setSignatureReason] = useState("");
+  const [signatureStyle, setSignatureStyle] = useState<
+    "cursive" | "script" | "normal"
+  >("cursive");
+  const [canAddSignature, setCanAddSignature] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const getSignatureFontFamily = (style: "cursive" | "script" | "normal") => {
+    if (style === "script") {
+      return "'Brush Script MT', 'Segoe Script', cursive";
+    }
+    if (style === "normal") {
+      return "inherit";
+    }
+    return "'Comic Sans MS', 'Bradley Hand', cursive";
+  };
 
   useEffect(() => {
     fetchConfig();
     fetchMessages();
+    checkSignaturePermission();
     // Refresh messages every 3 seconds
     const interval = setInterval(fetchMessages, 3000);
     return () => clearInterval(interval);
   }, [documentId]);
+
+  useEffect(() => {
+    checkSignaturePermission();
+  }, [documentId, userEmail]);
 
   const fetchConfig = async () => {
     try {
@@ -66,8 +88,42 @@ export default function ChatPanel({
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
+  const checkSignaturePermission = async () => {
+    try {
+      if (!documentId || !userEmail) {
+        setCanAddSignature(false);
+        return;
+      }
+
+      const response = await fetch(
+        `/api/get-signers?documentId=${encodeURIComponent(
+          documentId,
+        )}&email=${encodeURIComponent(userEmail)}`,
+      );
+
+      if (!response.ok) {
+        setCanAddSignature(false);
+        return;
+      }
+
+      const signers = await response.json();
+      const normalizedEmail = userEmail.trim().toLowerCase();
+      const current = (signers || []).find(
+        (r: any) => (r.email || "").toLowerCase() === normalizedEmail,
+      );
+
+      setCanAddSignature(current?.status === "signed");
+    } catch (err) {
+      console.error("Error checking signature permission:", err);
+      setCanAddSignature(false);
+    }
+  };
+
+  const sendMessage = async (
+    messageText: string,
+    fileToUpload?: File | null,
+  ) => {
+    if (!messageText.trim()) return;
 
     setSending(true);
     try {
@@ -99,11 +155,11 @@ export default function ChatPanel({
       }
 
       // Upload file if selected
-      if (selectedFile) {
-        const fileName = `${documentId}/${Date.now()}_${selectedFile.name}`;
+      if (fileToUpload) {
+        const fileName = `${documentId}/${Date.now()}_${fileToUpload.name}`;
         const { error: uploadError } = await supabase.storage
           .from("documents")
-          .upload(fileName, selectedFile);
+          .upload(fileName, fileToUpload);
 
         if (uploadError) {
           throw new Error(`File upload failed: ${uploadError.message}`);
@@ -114,7 +170,7 @@ export default function ChatPanel({
           .getPublicUrl(fileName);
 
         attachmentUrl = publicData.publicUrl;
-        attachmentName = selectedFile.name;
+        attachmentName = fileToUpload.name;
       }
 
       const response = await fetch("/api/chat-messages", {
@@ -122,7 +178,7 @@ export default function ChatPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentId,
-          message,
+          message: messageText,
           senderEmail: userEmail,
           senderName: userName,
           senderIp,
@@ -140,8 +196,6 @@ export default function ChatPanel({
         );
       }
 
-      setMessage("");
-      setSelectedFile(null);
       await fetchMessages();
     } catch (err: any) {
       const errorMessage = err.message || "Failed to send message";
@@ -149,6 +203,56 @@ export default function ChatPanel({
       alert(`Error sending message: ${errorMessage}`);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    const messageText = message;
+    const fileToUpload = selectedFile;
+    setMessage("");
+    setSelectedFile(null);
+    await sendMessage(messageText, fileToUpload);
+  };
+
+  const handleAddSignature = async () => {
+    const name = signatureName.trim();
+    const reason = signatureReason.trim();
+    if (!name || !reason) return;
+    const signatureMessage = `[SIGNATURE] ${name} || ${reason} || ${signatureStyle}`;
+    setSignatureName("");
+    setSignatureReason("");
+    setSignatureStyle("cursive");
+    setShowSignatureModal(false);
+    await sendMessage(signatureMessage, null);
+  };
+
+  const handleDownloadConversation = async () => {
+    try {
+      const response = await fetch("/api/chat-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = `conversation_${documentId}.pdf`;
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(
+        `Failed to download conversation: ${err.message || "Unknown error"}`,
+      );
     }
   };
 
@@ -169,60 +273,102 @@ export default function ChatPanel({
             No messages yet. Start a conversation!
           </div>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${
-                msg.sender_email === userEmail ? "justify-end" : "justify-start"
-              }`}
-            >
+          messages.map((msg) => {
+            const isSignature = msg.message?.startsWith("[SIGNATURE]");
+            const showHeader = msg.sender_email !== userEmail || isSignature;
+            const signatureBody = isSignature
+              ? msg.message.replace("[SIGNATURE]", "").trim()
+              : "";
+            const [sigName, sigReason, sigStyleRaw] = signatureBody
+              ? signatureBody.split("||").map((part) => part.trim())
+              : ["", "", ""];
+            const sigStyle =
+              sigStyleRaw === "script" || sigStyleRaw === "normal"
+                ? sigStyleRaw
+                : "cursive";
+            const signatureFontFamily = getSignatureFontFamily(sigStyle);
+
+            return (
               <div
-                className={`max-w-xs ${
+                key={msg.id}
+                className={`flex ${
                   msg.sender_email === userEmail
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-900"
-                } rounded-lg p-3`}
+                    ? "justify-end"
+                    : "justify-start"
+                }`}
               >
-                {msg.sender_email !== userEmail && (
-                  <div className="mb-2 border-b pb-2 border-gray-400">
-                    <p className="text-xs font-bold text-gray-800">
-                      {msg.sender_name || msg.sender_email}
-                    </p>
-                    <p className="text-xs text-gray-700">{msg.sender_email}</p>
-                    {showLocation && (
-                      <>
-                        {msg.sender_location &&
-                          msg.sender_location !== "Unknown" && (
+                <div
+                  className={`max-w-xs ${
+                    isSignature
+                      ? "bg-amber-100 text-amber-900 border border-amber-200"
+                      : msg.sender_email === userEmail
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-900"
+                  } rounded-lg p-3`}
+                >
+                  {showHeader && (
+                    <div className="mb-2 border-b pb-2 border-gray-400">
+                      <p className="text-xs font-bold text-gray-800">
+                        {msg.sender_name || msg.sender_email}
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        {msg.sender_email}
+                      </p>
+                      {showLocation && (
+                        <>
+                          {msg.sender_location &&
+                            msg.sender_location !== "Unknown" && (
+                              <p className="text-xs text-gray-700">
+                                📍 {msg.sender_location}
+                              </p>
+                            )}
+                          {msg.sender_ip && (
                             <p className="text-xs text-gray-700">
-                              📍 {msg.sender_location}
+                              🌐 IP: {msg.sender_ip}
                             </p>
                           )}
-                        {msg.sender_ip && (
-                          <p className="text-xs text-gray-700">
-                            🌐 IP: {msg.sender_ip}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-                <p className="text-sm break-words">{msg.message}</p>
-                {msg.attachment_url && (
-                  <a
-                    href={msg.attachment_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs mt-2 underline block"
-                  >
-                    📎 {msg.attachment_name}
-                  </a>
-                )}
-                <p className="text-xs mt-1 opacity-75">
-                  {new Date(msg.created_at).toLocaleTimeString()}
-                </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {isSignature ? (
+                    <div className="text-sm">
+                      <p className="font-semibold">✍️ Signature added</p>
+                      {sigName && (
+                        <p className="mt-1">
+                          <span className="font-semibold"></span>{" "}
+                          <span
+                            className="text-[30px] leading-tight"
+                            style={{ fontFamily: signatureFontFamily }}
+                          >
+                            {sigName}
+                          </span>
+                        </p>
+                      )}
+                      {sigReason && (
+                        <p className="break-words  mt-1">Reason: {sigReason}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm break-words">{msg.message}</p>
+                  )}
+                  {msg.attachment_url && (
+                    <a
+                      href={msg.attachment_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs mt-2 underline block"
+                    >
+                      📎 {msg.attachment_name}
+                    </a>
+                  )}
+                  <p className="text-xs mt-1 opacity-75">
+                    {new Date(msg.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -240,7 +386,23 @@ export default function ChatPanel({
             </button>
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {canAddSignature && (
+            <button
+              onClick={() => setShowSignatureModal(true)}
+              className="px-3 py-2 bg-amber-100 text-amber-900 rounded text-sm hover:bg-amber-200"
+              disabled={sending}
+            >
+              ✍️ Add signature
+            </button>
+          )}
+          <button
+            onClick={handleDownloadConversation}
+            className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+            disabled={sending}
+          >
+            ⬇️ Download conversation
+          </button>
           <label className="flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 cursor-pointer text-sm">
             📎
             <input
@@ -270,6 +432,76 @@ export default function ChatPanel({
           </button>
         </div>
       </div>
+
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-5 space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Add signature
+              </h3>
+              <p className="text-sm text-gray-600">
+                Why are you adding a signature?
+              </p>
+            </div>
+            <input
+              type="text"
+              value={signatureName}
+              onChange={(e) => setSignatureName(e.target.value)}
+              placeholder='Your name (e.g., "John Doe")'
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-black placeholder-gray-500"
+              style={{ fontFamily: getSignatureFontFamily(signatureStyle) }}
+            />
+            <div className="space-y-2">
+              <label className="text-sm text-gray-700 font-medium">
+                Signature style
+              </label>
+              <select
+                value={signatureStyle}
+                onChange={(e) =>
+                  setSignatureStyle(
+                    e.target.value as "cursive" | "script" | "normal",
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-black"
+              >
+                <option value="cursive">Cursive</option>
+                <option value="script">Script</option>
+                <option value="normal">Normal</option>
+              </select>
+            </div>
+            <textarea
+              value={signatureReason}
+              onChange={(e) => setSignatureReason(e.target.value)}
+              placeholder='e.g., "I have sent money for 1st milestone"'
+              className="w-full min-h-[110px] px-3 py-2 border border-gray-300 rounded text-sm text-black placeholder-gray-500"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowSignatureModal(false);
+                  setSignatureReason("");
+                  setSignatureName("");
+                  setSignatureStyle("cursive");
+                }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                disabled={sending}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSignature}
+                disabled={
+                  sending || !signatureName.trim() || !signatureReason.trim()
+                }
+                className="px-4 py-2 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 disabled:opacity-50"
+              >
+                Add signature
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
