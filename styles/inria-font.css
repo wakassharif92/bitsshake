@@ -1,5 +1,162 @@
 @import url("https://fonts.googleapis.com/css2?family=Inria+Sans:wght@400;700&display=swap");
 
+@font-face {
+  font-family: "Inria Serif";
+  src: url("/fonts/inria_serif/InriaSerif-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inria Serif";
+  src: url("/fonts/inria_serif/InriaSerif-LightItalic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inria Serif";
+  src: url("/fonts/inria_serif/InriaSerif-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inria Serif";
+  src: url("/fonts/inria_serif/InriaSerif-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inria Serif";
+  src: url("/fonts/inria_serif/InriaSerif-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inria Serif";
+  src: url("/fonts/inria_serif/InriaSerif-BoldItalic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Aesthet";
+  src: url("/fonts/aesthet/Aesthet-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Aesthet";
+  src: url("/fonts/aesthet/zAesthet-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DT Hand Draft";
+  src: url("/fonts/dt_hand_draft/Dragon Tongue Foundry - DT Hand Draft Solid.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DT Hand Draft";
+  src: url("/fonts/dt_hand_draft/Dragon Tongue Foundry - DT Hand Draft Outline.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DT Hand Draft";
+  src: url("/fonts/dt_hand_draft/Dragon Tongue Foundry - DT Hand Draft Hatched.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica_neue/HelveticaNeueRoman.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica_neue/HelveticaNeueItalic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica_neue/HelveticaNeueBold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Rache";
+  src:
+    url("/fonts/rache/RacheRache.woff2") format("woff2"),
+    url("/fonts/rache/RacheRache.woff") format("woff"),
+    url("/fonts/rache/RacheRache.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roby Soho";
+  src: url("/fonts/roby_soho/RobySoho-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sedan";
+  src: url("/fonts/sedan/Sedan-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sedan";
+  src: url("/fonts/sedan/Sedan-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
   --font-inria: "Inria Sans", sans-serif;
+  --font-inria-serif: "Inria Serif", serif;
+  --font-aesthet: "Aesthet", serif;
+  --font-dt-hand-draft: "DT Hand Draft", cursive;
+  --font-helvetica-neue: "Helvetica Neue", Arial, sans-serif;
+  --font-rache: "Rache", serif;
+  --font-roby-soho: "Roby Soho", serif;
+  --font-sedan: "Sedan", serif;
 }

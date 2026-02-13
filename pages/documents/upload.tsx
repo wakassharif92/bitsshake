@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { User } from "@/lib/types";
+import { hasPremiumAccess } from "@/lib/subscription";
 
 export default function UploadDocument() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,6 +22,13 @@ export default function UploadDocument() {
         return;
       }
 
+      const { data: userData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      setCurrentUser(userData || null);
       setLoading(false);
     };
 
@@ -26,6 +36,11 @@ export default function UploadDocument() {
   }, [router]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      e.target.value = "";
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -95,6 +110,8 @@ export default function UploadDocument() {
     );
   }
 
+  const isLocked = !hasPremiumAccess(currentUser);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -115,6 +132,14 @@ export default function UploadDocument() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {isLocked && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Your trial has ended. Please upgrade to upload documents.
+            <Link href="/pricing" className="ml-2 font-semibold underline">
+              View pricing
+            </Link>
+          </div>
+        )}
         {/* Upload Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -125,13 +150,15 @@ export default function UploadDocument() {
               type="file"
               accept=".pdf"
               onChange={handleFileUpload}
-              disabled={uploading}
+              disabled={uploading || isLocked}
               className="hidden"
               id="file-upload"
             />
             <label
               htmlFor="file-upload"
-              className="cursor-pointer flex flex-col items-center gap-2"
+              className={`flex flex-col items-center gap-2 ${
+                isLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+              }`}
             >
               <svg
                 className="w-12 h-12 text-gray-400"
@@ -147,7 +174,11 @@ export default function UploadDocument() {
                 />
               </svg>
               <span className="text-gray-600">
-                {uploading ? "Uploading..." : "Click to upload PDF"}
+                {uploading
+                  ? "Uploading..."
+                  : isLocked
+                    ? "Upgrade to upload PDFs"
+                    : "Click to upload PDF"}
               </span>
               <span className="text-sm text-gray-500">PDF files only</span>
             </label>

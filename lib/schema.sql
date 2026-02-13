@@ -5,6 +5,15 @@ CREATE TABLE IF NOT EXISTS users (
   full_name varchar(255),
   company_name varchar(255),
   role varchar(50) DEFAULT 'user',
+  trial_start_at timestamp,
+  trial_end_at timestamp,
+  stripe_customer_id varchar(255),
+  stripe_subscription_id varchar(255),
+  subscription_status varchar(50),
+  current_period_end timestamp,
+  plan_interval varchar(20),
+  cancel_at_period_end boolean DEFAULT false,
+  cancel_at timestamp,
   created_at timestamp DEFAULT now(),
   updated_at timestamp DEFAULT now()
 );

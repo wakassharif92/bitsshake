@@ -68,4 +68,13 @@ export interface User {
   company_name: string;
   role: "admin" | "user";
   created_at: string;
+  trial_start_at?: string | null;
+  trial_end_at?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
+  current_period_end?: string | null;
+  plan_interval?: "monthly" | "annual" | null;
+  cancel_at_period_end?: boolean | null;
+  cancel_at?: string | null;
 }

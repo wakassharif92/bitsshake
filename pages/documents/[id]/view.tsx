@@ -3,18 +3,24 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Document, Recipient, AuditLog, ChatMessage } from "@/lib/types";
+import { Document, Recipient, AuditLog, ChatMessage, User } from "@/lib/types";
+import { hasPremiumAccess } from "@/lib/subscription";
 import ChatPanel from "@/components/ChatPanel";
 
 export default function ViewDocument() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState("");
   const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserData, setCurrentUserData] = useState<User | null>(null);
   const [showSendPopover, setShowSendPopover] = useState(false);
   const [sendingDocument, setSendingDocument] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   // Send via Email (same as edit page)
   const handleSendViaEmail = async () => {
+    if (!hasPremiumAccess(currentUserData) && !isPublicView) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     if (!id || recipients.length === 0) {
       alert("Please add at least one recipient before sending");
       return;
@@ -63,6 +69,10 @@ export default function ViewDocument() {
     }
   };
   const handleSendViaLink = () => {
+    if (!hasPremiumAccess(currentUserData) && !isPublicView) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     setShowLinkModal(true);
   };
   const router = useRouter();
@@ -123,7 +133,8 @@ export default function ViewDocument() {
 
           const clientTime = new Date().toLocaleString();
           const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          const logEntry = {
+          const logEntry: AuditLog = {
+            id: `local-${Date.now()}`,
             document_id: String(id),
             action: "DOCUMENT_OPENED",
             actor_email: actorEmail,
@@ -158,7 +169,7 @@ export default function ViewDocument() {
             throw new Error(logData?.error || "Failed to log document open");
           }
 
-          setAuditLogs((prev) => [logEntry as AuditLog, ...prev]);
+          setAuditLogs((prev) => [logEntry, ...prev]);
 
           hasLoggedOpenRef.current = true;
         } catch (err) {
@@ -233,6 +244,12 @@ export default function ViewDocument() {
         setCurrentUserName(
           session?.user?.user_metadata?.full_name || session?.user?.email || "",
         );
+        const { data: userData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", userId)
+          .single();
+        setCurrentUserData(userData || null);
         await fetchChatSignatures(session?.user?.email || "");
 
         // Fetch document
@@ -305,6 +322,10 @@ export default function ViewDocument() {
   };
 
   const handleDownloadPDF = async () => {
+    if (!hasPremiumAccess(currentUserData) && !isPublicView) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     // Only check signers for completion
     const signers = recipients.filter((r) => r.role === "signer");
     const allSignersSigned =
@@ -356,6 +377,8 @@ export default function ViewDocument() {
   if (!document) {
     return <div>Document not found</div>;
   }
+
+  const hasAccess = isPublicView ? true : hasPremiumAccess(currentUserData);
 
   const formatTimeAgo = (dateString: string) => {
     const diffMs = Date.now() - new Date(dateString).getTime();
@@ -441,12 +464,14 @@ export default function ViewDocument() {
                 return (
                   <button
                     onClick={handleDownloadPDF}
-                    disabled={!allSignersSigned}
+                    disabled={!allSignersSigned || !hasAccess}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     title={
-                      allSignersSigned
-                        ? "Download signed document"
-                        : "All signers must sign before download"
+                      !hasAccess
+                        ? "Upgrade to download"
+                        : allSignersSigned
+                          ? "Download signed document"
+                          : "All signers must sign before download"
                     }
                   >
                     Download PDF
@@ -460,7 +485,7 @@ export default function ViewDocument() {
                   <div className="relative">
                     <button
                       onClick={() => setShowSendPopover((v) => !v)}
-                      disabled={sendingDocument}
+                      disabled={sendingDocument || !hasAccess}
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {sendingDocument ? (
@@ -480,7 +505,7 @@ export default function ViewDocument() {
                             handleSendViaEmail();
                           }}
                           className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
-                          disabled={sendingDocument}
+                          disabled={sendingDocument || !hasAccess}
                         >
                           Send via Email
                         </button>
@@ -490,7 +515,7 @@ export default function ViewDocument() {
                             handleSendViaLink();
                           }}
                           className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
-                          disabled={sendingDocument}
+                          disabled={sendingDocument || !hasAccess}
                         >
                           View Links
                         </button>
@@ -505,6 +530,14 @@ export default function ViewDocument() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        {!isPublicView && !hasAccess && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Your trial has ended. Upgrade to send, download, or use chat.
+            <Link href="/pricing" className="ml-2 font-semibold underline">
+              View pricing
+            </Link>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Document content */}
           <div className="lg:col-span-2">
@@ -725,7 +758,8 @@ export default function ViewDocument() {
                                     navigator.clipboard.writeText(link);
                                     alert("Link copied to clipboard!");
                                   }}
-                                  className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1 ml-1"
+                                  disabled={!hasAccess}
+                                  className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1 ml-1 disabled:opacity-50"
                                 >
                                   Copy Link
                                 </button>
@@ -754,6 +788,7 @@ export default function ViewDocument() {
                     userEmail={currentUserEmail}
                     userName={currentUserName}
                     isAdmin={currentUserId === document.admin_id}
+                    isDisabled={!hasAccess}
                   />
                 </div>
               </div>

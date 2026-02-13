@@ -17,6 +17,7 @@ export default function Templates() {
   const [newTemplate, setNewTemplate] = useState({ name: "", content: "" });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isTrialExpired, setIsTrialExpired] = useState(false);
 
   const dynamicVariables = [
     { label: "Client Name", value: "{clientName}" },
@@ -36,6 +37,25 @@ export default function Templates() {
       if (!session) {
         router.push("/login");
         return;
+      }
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id, created_at, trial_end_at")
+        .eq("id", session.user.id)
+        .single();
+
+      const trialEnd = userData?.trial_end_at
+        ? new Date(userData.trial_end_at)
+        : userData?.created_at
+          ? new Date(
+              new Date(userData.created_at).getTime() +
+                30 * 24 * 60 * 60 * 1000,
+            )
+          : null;
+
+      if (trialEnd && trialEnd <= new Date()) {
+        setIsTrialExpired(true);
       }
 
       const { data } = await supabase
@@ -147,6 +167,48 @@ export default function Templates() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (isTrialExpired) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/dashboard">
+                  <button className="text-gray-600 hover:text-gray-900">
+                    ← Back
+                  </button>
+                </Link>
+                <h1 className="text-3xl font-bold text-gray-900">Templates</h1>
+              </div>
+              <Link href="/pricing">
+                <button className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium">
+                  Upgrade
+                </button>
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-4xl mx-auto py-16 px-6 text-center">
+          <h2 className="text-2xl font-semibold text-gray-900">
+            Your free trial has ended
+          </h2>
+          <p className="mt-3 text-gray-600">
+            Please upgrade to continue using templates.
+          </p>
+          <div className="mt-8">
+            <Link href="/pricing">
+              <button className="px-8 py-3 rounded-full bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-white font-semibold">
+                View pricing
+              </button>
+            </Link>
+          </div>
+        </main>
       </div>
     );
   }

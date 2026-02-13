@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,20 +10,37 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileCompany, setProfileCompany] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [sessionUser, setSessionUser] = useState<{
+    id: string;
+    email: string | null;
+    full_name?: string | null;
+  } | null>(null);
   const [signOutLoading, setSignOutLoading] = useState(false);
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const getTrialEnd = (userData: User | null) => {
+    if (!userData) return null;
+    if (userData.trial_end_at) return new Date(userData.trial_end_at);
+    if (userData.created_at) {
+      const created = new Date(userData.created_at);
+      created.setDate(created.getDate() + 30);
+      return created;
+    }
+    return null;
+  };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowCreateMenu(false);
-      }
-    };
+  const trialEnd = getTrialEnd(user);
+  const isTrialExpired = trialEnd ? trialEnd <= new Date() : false;
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const navLinks = [
+    { name: "Write Document", path: "/documents/create" },
+    { name: "Upload Document", path: "/documents/upload" },
+    // { name: "Your Documents", path: "#documents" },
+    { name: "Templates", path: isTrialExpired ? "/pricing" : "/templates" },
+    { name: "Pricing", path: "/pricing" },
+  ];
 
   const fetchDocuments = async (sessionUserId: string) => {
     const { data: docsData } = await supabase
@@ -35,8 +52,23 @@ export default function Dashboard() {
     setDocuments(docsData || []);
   };
 
+  const fetchUserData = async (userId: string) => {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (userData) {
+      setUser(userData);
+    }
+
+    return userData;
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
+      let pollInterval: ReturnType<typeof setInterval> | null = null;
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -46,25 +78,45 @@ export default function Dashboard() {
         return;
       }
 
+      setSessionUser({
+        id: session.user.id,
+        email: session.user.email || null,
+        full_name: session.user.user_metadata?.full_name || null,
+      });
+
       // Fetch user data
-      const { data: userData } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
+      const userData = await fetchUserData(session.user.id);
 
-      setUser(userData);
+      if (!userData) {
+        let pendingProfile: {
+          full_name?: string;
+          company_name?: string;
+        } | null = null;
+        try {
+          const raw = localStorage.getItem("pendingProfile");
+          pendingProfile = raw ? JSON.parse(raw) : null;
+        } catch {
+          pendingProfile = null;
+        }
 
-      // Fetch documents
+        setProfileName(
+          pendingProfile?.full_name ||
+            session.user.user_metadata?.full_name ||
+            "",
+        );
+        setProfileCompany(pendingProfile?.company_name || "");
+        setShowProfileSetup(true);
+        setLoading(false);
+        return;
+      }
+
       await fetchDocuments(session.user.id);
       setLoading(false);
 
-      // Poll for document updates every 3 seconds
-      const pollInterval = setInterval(() => {
+      pollInterval = setInterval(() => {
         fetchDocuments(session.user.id);
       }, 3000);
 
-      // Refresh documents when page comes back into focus
       const handleFocus = async () => {
         await fetchDocuments(session.user.id);
       };
@@ -72,7 +124,7 @@ export default function Dashboard() {
       window.addEventListener("focus", handleFocus);
 
       return () => {
-        clearInterval(pollInterval);
+        if (pollInterval) clearInterval(pollInterval);
         window.removeEventListener("focus", handleFocus);
       };
     };
@@ -82,6 +134,46 @@ export default function Dashboard() {
       cleanup?.then((fn) => fn?.());
     };
   }, [router]);
+
+  const handleProfileSave = async () => {
+    if (!sessionUser) return;
+    if (!profileName.trim() || !profileCompany.trim()) return;
+
+    setProfileSaving(true);
+    try {
+      const trialStart = new Date();
+      const trialEnd = new Date();
+      trialEnd.setMonth(trialEnd.getMonth() + 1);
+
+      const { data: createdUser, error } = await supabase
+        .from("users")
+        .insert([
+          {
+            id: sessionUser.id,
+            email: sessionUser.email,
+            full_name: profileName.trim(),
+            company_name: profileCompany.trim(),
+            role: "admin",
+            trial_start_at: trialStart.toISOString(),
+            trial_end_at: trialEnd.toISOString(),
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setUser(createdUser);
+      setShowProfileSetup(false);
+      localStorage.removeItem("pendingProfile");
+
+      await fetchDocuments(sessionUser.id);
+    } catch (err) {
+      console.error("Error creating user profile:", err);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const handleSignOut = async () => {
     setSignOutLoading(true);
@@ -107,85 +199,163 @@ export default function Dashboard() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <div>
+  if (showProfileSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-serif">
+        <div className="max-w-md w-full space-y-6">
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signOutLoading}
+              className="text-sm font-semibold text-black/80 hover:text-black/30 transition cursor-pointer"
+            >
+              {signOutLoading ? "Switching..." : "Switch account"}
+            </button>
+          </div>
+          <div className="text-center">
             <Image
               src="/bitsshake-01.png"
               alt="BitsShake Logo"
-              width={150}
-              height={80}
-              className="mb-2"
+              width={200}
+              height={100}
+              className="mx-auto"
             />
-            <p className="text-sm text-gray-600 mt-1">
-              Welcome, {user?.full_name} ({user?.company_name})
+            <p className="text-sm text-gray-600">
+              Your account was not found. Please complete your profile.
             </p>
           </div>
-          <button
-            onClick={handleSignOut}
-            disabled={signOutLoading}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-          >
-            {signOutLoading ? "Signing out..." : "Sign out"}
-          </button>
+
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Full name"
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              className="appearance-none relative block w-full px-4 py-3 border-2 border-white/80 bg-white/80 placeholder-gray-500 text-gray-900 rounded-full focus:outline-none focus:ring-0 focus:border-white sm:text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Company name"
+              value={profileCompany}
+              onChange={(e) => setProfileCompany(e.target.value)}
+              className="appearance-none relative block w-full px-4 py-3 border-2 border-white/80 bg-white/80 placeholder-gray-500 text-gray-900 rounded-full focus:outline-none focus:ring-0 focus:border-white sm:text-sm"
+            />
+          </div>
+
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={handleProfileSave}
+              disabled={
+                profileSaving || !profileName.trim() || !profileCompany.trim()
+              }
+              className="group flex items-center justify-between w-full max-w-xs px-5 py-3 rounded-full bg-gray-100 transition-transform duration-200 ease-out hover:scale-105 disabled:opacity-50 border-2 border-white cursor-pointer"
+            >
+              <span className="text-gray-800 text-sm font-medium">
+                {profileSaving ? "Saving..." : "Continue"}
+              </span>
+              <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-900 text-white">
+                {profileSaving ? (
+                  <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                )}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className=" ">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex justify-center">
+          <nav className="hidden lg:flex items-center gap-x-10 font-inria rounded-full px-8 py-4 bg-gradient-to-b from-[#ffffff] to-[#d9d9d9] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),_0_8px_20px_rgba(0,0,0,0.15)] border border-white/80">
+            <Link
+              href="/dashboard#documents"
+              className="flex items-center gap-3 pr-2 group"
+            >
+              <span className="text-lg font-semibold tracking-wide text-gray-900 transition-colors duration-300 group-hover:text-gray-700">
+                Bits Shake
+              </span>
+              {/* <span className="text-gray-500">•</span> */}
+              {/* <span className="text-sm font-medium text-gray-300">
+                {user?.company_name || "Company"}
+              </span> */}
+            </Link>
+            {navLinks.map((link) => {
+              const isActive = router.asPath === link.path;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.path}
+                  className="flex items-center group"
+                >
+                  <span
+                    className={`text-sm font-medium tracking-wide transition-all duration-300 ${
+                      isActive
+                        ? "text-gray-900"
+                        : "text-gray-600 group-hover:text-gray-900"
+                    }`}
+                  >
+                    {link.name}
+                  </span>
+                </Link>
+              );
+            })}
+            <button
+              onClick={handleSignOut}
+              disabled={signOutLoading}
+              className="flex items-center group"
+              type="button"
+            >
+              <span
+                className={`text-sm font-medium tracking-wide transition-all duration-300 ${
+                  signOutLoading
+                    ? "text-gray-400"
+                    : "text-gray-600 group-hover:text-gray-900"
+                }`}
+              >
+                {signOutLoading ? "Signing out..." : "Sign out"}
+              </span>
+            </button>
+          </nav>
         </div>
       </header>
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        {/* Action buttons */}
-        <div className="mb-8 flex gap-4">
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setShowCreateMenu(!showCreateMenu)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-            >
-              Create Document
-            </button>
-
-            {/* Popover Menu */}
-            {showCreateMenu && (
-              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                <Link href="/documents/create">
-                  <button
-                    onClick={() => setShowCreateMenu(false)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 font-medium text-gray-900 border-b border-gray-200"
-                  >
-                    ✏️ Write Document
-                  </button>
-                </Link>
-                <Link href="/documents/upload">
-                  <button
-                    onClick={() => setShowCreateMenu(false)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 font-medium text-gray-900"
-                  >
-                    ↑ Upload Document
-                  </button>
-                </Link>
-              </div>
-            )}
-          </div>
-          <Link href="/templates">
-            <button className="px-6 py-2 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300 font-medium">
-              Manage Templates
-            </button>
-          </Link>
-        </div>
-
         {/* Documents section */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div
+          id="documents"
+          className="bg-white shadow rounded-lg overflow-hidden"
+        >
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">My Documents</h2>
           </div>
 
           {documents.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-gray-500 mb-4">No documents yet</p>
+              <p className="text-gray-500 mb-4 ">No documents yet</p>
               <Link href="/documents/create">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                <button className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]">
                   Create your first document
                 </button>
               </Link>

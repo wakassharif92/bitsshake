@@ -7,6 +7,7 @@ interface ChatPanelProps {
   userEmail: string;
   userName: string;
   isAdmin: boolean;
+  isDisabled?: boolean;
 }
 
 export default function ChatPanel({
@@ -14,6 +15,7 @@ export default function ChatPanel({
   userEmail,
   userName,
   isAdmin,
+  isDisabled = false,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,10 @@ export default function ChatPanel({
     messageText: string,
     fileToUpload?: File | null,
   ) => {
+    if (isDisabled) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     if (!messageText.trim()) return;
 
     setSending(true);
@@ -216,6 +222,10 @@ export default function ChatPanel({
   };
 
   const handleAddSignature = async () => {
+    if (isDisabled) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     const name = signatureName.trim();
     const reason = signatureReason.trim();
     if (!name || !reason) return;
@@ -228,6 +238,10 @@ export default function ChatPanel({
   };
 
   const handleDownloadConversation = async () => {
+    if (isDisabled) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     try {
       const response = await fetch("/api/chat-pdf", {
         method: "POST",
@@ -375,6 +389,11 @@ export default function ChatPanel({
 
       {/* Input */}
       <div className="border-t border-gray-200 p-4 bg-white space-y-3">
+        {isDisabled && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Chat is disabled. Upgrade to continue.
+          </div>
+        )}
         {selectedFile && (
           <div className="flex items-center justify-between bg-gray-100 p-2 rounded text-sm">
             <span>📎 {selectedFile.name}</span>
@@ -391,7 +410,7 @@ export default function ChatPanel({
             <button
               onClick={() => setShowSignatureModal(true)}
               className="px-3 py-2 bg-amber-100 text-amber-900 rounded text-sm hover:bg-amber-200"
-              disabled={sending}
+              disabled={sending || isDisabled}
             >
               ✍️ Add signature
             </button>
@@ -399,17 +418,24 @@ export default function ChatPanel({
           <button
             onClick={handleDownloadConversation}
             className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
-            disabled={sending}
+            disabled={sending || isDisabled}
           >
             ⬇️ Download conversation
           </button>
-          <label className="flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 cursor-pointer text-sm">
+          <label
+            className={`flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm ${
+              isDisabled
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:bg-gray-200 cursor-pointer"
+            }`}
+          >
             📎
             <input
               type="file"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               className="hidden"
               accept=".pdf,.doc,.docx,.txt,.jpg,.png"
+              disabled={isDisabled}
             />
           </label>
           <input
@@ -421,11 +447,11 @@ export default function ChatPanel({
             }}
             placeholder="Type a message..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm text-black placeholder-gray-500"
-            disabled={sending}
+            disabled={sending || isDisabled}
           />
           <button
             onClick={handleSendMessage}
-            disabled={sending || !message.trim()}
+            disabled={sending || !message.trim() || isDisabled}
             className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
           >
             {sending ? "..." : "Send"}
@@ -485,14 +511,17 @@ export default function ChatPanel({
                   setSignatureStyle("cursive");
                 }}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
-                disabled={sending}
+                disabled={sending || isDisabled}
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddSignature}
                 disabled={
-                  sending || !signatureName.trim() || !signatureReason.trim()
+                  sending ||
+                  !signatureName.trim() ||
+                  !signatureReason.trim() ||
+                  isDisabled
                 }
                 className="px-4 py-2 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 disabled:opacity-50"
               >

@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
-import { Template } from "@/lib/types";
+import { Template, User } from "@/lib/types";
+import { hasPremiumAccess } from "@/lib/subscription";
 
 const dynamicVariables = [
   { label: "Client Name", value: "{clientName}" },
@@ -33,6 +34,7 @@ export default function CreateDocument() {
   const [variableValues, setVariableValues] = useState<Record<string, string>>(
     {},
   );
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const extractTemplateVariables = (html: string) => {
     const found = new Set<string>();
@@ -71,6 +73,14 @@ export default function CreateDocument() {
         router.push("/login");
         return;
       }
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      setCurrentUser(userData || null);
 
       // Fetch templates
       const { data: templatesData } = await supabase
@@ -137,6 +147,11 @@ export default function CreateDocument() {
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
+
     if (!title.trim()) {
       alert("Please enter a document title");
       return;
@@ -194,6 +209,8 @@ export default function CreateDocument() {
     );
   }
 
+  const isLocked = !hasPremiumAccess(currentUser);
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -211,7 +228,7 @@ export default function CreateDocument() {
           </div>
           <button
             onClick={handleCreateDocument}
-            disabled={loading || !title.trim()}
+            disabled={loading || !title.trim() || isLocked}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
           >
             {loading ? "Creating..." : "Create Document"}
@@ -222,6 +239,14 @@ export default function CreateDocument() {
       {/* Main content */}
       <main className="flex-1 overflow-hidden flex flex-col">
         <div className="max-w-7xl mx-auto w-full h-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-4">
+          {isLocked && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Your trial has ended. Please upgrade to create documents.
+              <Link href="/pricing" className="ml-2 font-semibold underline">
+                View pricing
+              </Link>
+            </div>
+          )}
           {/* Title input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -11,6 +11,13 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-inria-serif);
+  --font-aesthet: var(--font-aesthet);
+  --font-dt-hand-draft: var(--font-dt-hand-draft);
+  --font-helvetica-neue: var(--font-helvetica-neue);
+  --font-rache: var(--font-rache);
+  --font-roby-soho: var(--font-roby-soho);
+  --font-sedan: var(--font-sedan);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,12 +27,46 @@
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-inria), Arial, Helvetica, sans-serif;
+html,
+body,
+#__next {
+  min-height: 100%;
 }
 
+html {
+  background: linear-gradient(
+    135deg,
+    #e8ecf3 0%,
+    #dde3ee 40%,
+    #c7d3e0 80%,
+    #f4f6fb 100%
+  );
+  /* background: linear-gradient(
+    135deg,
+    #ff1c7b88 40%,
+    #ffff9b99 0%,
+    #ffd7c8b6 80%,
+    #ff5fc454 100%
+  ); */
+  /* Force dark text in input fields */
+
+  background-attachment: fixed;
+}
+
+body {
+  background: transparent;
+
+  color: var(--foreground);
+  font-family: var(--font-inria), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+/* background: linear-gradient(
+    135deg,
+    #ff1c7b88 40%,
+    #ffff9b99 0%,
+    #ffd7c8b6 80%,
+    #ff5fc454 100%
+  ); */
 /* Force dark text in input fields */
 input,
 textarea,
@@ -37,4 +78,9 @@ select {
 input::placeholder,
 textarea::placeholder {
   color: #999 !important;
+}
+
+/* Allow app gradient to show through page wrappers */
+.bg-gray-50 {
+  background-color: transparent !important;
 }

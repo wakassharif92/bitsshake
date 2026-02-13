@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
-import { Document, Recipient } from "@/lib/types";
+import { Document, Recipient, User } from "@/lib/types";
+import { hasPremiumAccess } from "@/lib/subscription";
 import ChatPanel from "@/components/ChatPanel";
 
 const RichEditor = dynamic(() => import("@/components/RichEditor"), {
@@ -30,6 +31,7 @@ export default function EditDocument() {
   const [currentUserEmail, setCurrentUserEmail] = useState("");
   const [currentUserName, setCurrentUserName] = useState("");
   const sendButtonRef = useRef<HTMLButtonElement>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -58,6 +60,14 @@ export default function EditDocument() {
       setCurrentUserName(
         session.user.user_metadata?.full_name || session.user.email || "",
       );
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      setCurrentUser(userData || null);
 
       // Fetch document
       const { data: docData } = await supabase
@@ -92,6 +102,10 @@ export default function EditDocument() {
 
   const handleSaveDocument = async () => {
     if (!id || !document) return;
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -110,6 +124,10 @@ export default function EditDocument() {
   };
 
   const handleAddRecipient = async () => {
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     if (!newRecipient.email.trim() || !newRecipient.name.trim() || !id) {
       alert("Please fill in all required fields (Email and Name)");
       return;
@@ -154,6 +172,10 @@ export default function EditDocument() {
   };
 
   const handleRemoveRecipient = async (recipientId: string) => {
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     if (!confirm("Remove this recipient?")) return;
 
     try {
@@ -167,6 +189,10 @@ export default function EditDocument() {
 
   // Send via Email (current behavior)
   const handleSendViaEmail = async () => {
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     if (!id || recipients.length === 0) {
       alert("Please add at least one recipient before sending");
       return;
@@ -218,6 +244,10 @@ export default function EditDocument() {
 
   // Send Link: lock document and show modal for link generation
   const handleSendViaLink = async () => {
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     if (!id || recipients.length === 0) {
       alert("Please add at least one recipient before sending");
       setShowSendPopover(false);
@@ -256,6 +286,10 @@ export default function EditDocument() {
 
   // Generate link for a recipient (after document is locked)
   const handleGenerateLink = (recipient: Recipient) => {
+    if (!hasPremiumAccess(currentUser)) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       (typeof window !== "undefined" ? window.location.origin : "");
@@ -274,6 +308,8 @@ export default function EditDocument() {
   if (!document) {
     return <div>Document not found</div>;
   }
+
+  const isLocked = !hasPremiumAccess(currentUser);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -299,7 +335,7 @@ export default function EditDocument() {
             <div className="flex gap-2">
               <button
                 onClick={handleSaveDocument}
-                disabled={saving}
+                disabled={saving || isLocked}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save Document"}
@@ -308,7 +344,7 @@ export default function EditDocument() {
                 <button
                   ref={sendButtonRef}
                   onClick={() => setShowSendPopover((v) => !v)}
-                  disabled={sendingDocument}
+                  disabled={sendingDocument || isLocked}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {sendingDocument ? (
@@ -328,7 +364,11 @@ export default function EditDocument() {
                         handleSendViaEmail();
                       }}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
-                      disabled={sendingDocument || document.status !== "draft"}
+                      disabled={
+                        sendingDocument ||
+                        document.status !== "draft" ||
+                        isLocked
+                      }
                     >
                       Send via Email
                     </button>
@@ -359,7 +399,7 @@ export default function EditDocument() {
                         }
                       }}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
-                      disabled={sendingDocument}
+                      disabled={sendingDocument || isLocked}
                     >
                       {document.status === "draft" ? "Send Link" : "View Links"}
                     </button>
@@ -374,6 +414,15 @@ export default function EditDocument() {
       {/* Main content */}
       <main className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col px-4 sm:px-6 lg:px-8 py-4">
+          {isLocked && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Your trial has ended. Upgrade to edit documents, manage
+              recipients, send for signature, or use chat.
+              <Link href="/pricing" className="ml-2 font-semibold underline">
+                View pricing
+              </Link>
+            </div>
+          )}
           {/* Title input */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -384,7 +433,7 @@ export default function EditDocument() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-              disabled={document.status !== "draft"}
+              disabled={document.status !== "draft" || isLocked}
             />
           </div>
 
@@ -430,7 +479,7 @@ export default function EditDocument() {
               <RichEditor
                 content={content}
                 onChange={setContent}
-                readOnly={document.status !== "draft"}
+                readOnly={document.status !== "draft" || isLocked}
               />
             </div>
           )}
@@ -445,6 +494,7 @@ export default function EditDocument() {
               userEmail={currentUserEmail}
               userName={currentUserName}
               isAdmin={true}
+              isDisabled={isLocked}
             />
           </div>
 
@@ -457,7 +507,7 @@ export default function EditDocument() {
                 </h2>
                 <button
                   onClick={() => setShowModal(true)}
-                  disabled={document.status !== "draft"}
+                  disabled={document.status !== "draft" || isLocked}
                   className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
                 >
                   + Add
@@ -510,7 +560,8 @@ export default function EditDocument() {
                         {document.status === "draft" && (
                           <button
                             onClick={() => handleRemoveRecipient(recipient.id)}
-                            className="text-red-600 hover:text-red-800 text-xs"
+                            disabled={isLocked}
+                            className="text-red-600 hover:text-red-800 text-xs disabled:opacity-50"
                           >
                             Remove
                           </button>
