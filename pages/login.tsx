@@ -288,7 +288,7 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="flex justify-center">
+            {/* <div className="flex justify-center">
               <button
                 type="button"
                 onClick={() => handleOAuthSignIn("apple")}
@@ -321,7 +321,7 @@ export default function Login() {
                   )}
                 </span>
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
