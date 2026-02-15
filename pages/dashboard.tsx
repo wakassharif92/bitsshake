@@ -215,7 +215,7 @@ export default function Dashboard() {
           </div>
           <div className="text-center">
             <Image
-              src="/bitsshake-01.png"
+              src="/bitsshake-logo.png"
               alt="BitsShake Logo"
               width={200}
               height={100}
@@ -292,12 +292,16 @@ export default function Dashboard() {
               href="/dashboard#documents"
               className="flex items-center gap-3 pr-2 group"
             >
-              <span className="text-lg font-semibold tracking-wide text-gray-900 transition-colors duration-300 group-hover:text-gray-700">
-                Bits Shake
-              </span>
+              <Image
+                src="/bitsshake-logo2.png"
+                alt="BitsShake Logo"
+                width={50}
+                height={50}
+                className="object-contain"
+              />
               {/* <span className="text-gray-500">•</span> */}
               {/* <span className="text-sm font-medium text-gray-300">
-                {user?.company_name || "Company"}
+              {user?.company_name || "Company"}
               </span> */}
             </Link>
             {navLinks.map((link) => {
@@ -407,13 +411,13 @@ export default function Dashboard() {
                         {doc.status === "draft" && (
                           <>
                             <Link href={`/documents/${doc.id}/edit`}>
-                              <button className="text-blue-600 hover:text-blue-800">
+                              <button className="px-4 py-1.5 rounded-full text-sm font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]">
                                 Edit
                               </button>
                             </Link>
                             <button
                               onClick={() => handleDeleteDocument(doc.id)}
-                              className="text-red-600 hover:text-red-800"
+                              className="px-4 py-1.5 rounded-full text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-all duration-300 ease-out hover:scale-[1.02]"
                             >
                               Delete
                             </button>
@@ -421,7 +425,7 @@ export default function Dashboard() {
                         )}
                         {doc.status !== "draft" && (
                           <Link href={`/documents/${doc.id}/view`}>
-                            <button className="text-blue-600 hover:text-blue-800">
+                            <button className="px-4 py-1.5 rounded-full text-sm font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]">
                               View
                             </button>
                           </Link>

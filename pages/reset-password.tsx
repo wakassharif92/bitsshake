@@ -55,7 +55,7 @@ export default function ResetPassword() {
       <div className="max-w-md w-full space-y-6">
         <div>
           <Image
-            src="/bitsshake-01.png"
+            src="/bitsshake-logo.png"
             alt="BitsShake Logo"
             width={200}
             height={100}

@@ -153,7 +153,7 @@ export default function Login() {
           </div>
           <div>
             <Image
-              src="/bitsshake-01.png"
+              src="/bitsshake-logo.png"
               alt="BitsShake Logo"
               width={200}
               height={100}
@@ -235,7 +235,7 @@ export default function Login() {
       <div className="max-w-md w-full space-y-1">
         <div>
           <Image
-            src="/bitsshake-01.png"
+            src="/bitsshake-logo2.png"
             alt="BitsShake Logo"
             width={200}
             height={100}

@@ -32,6 +32,7 @@ export default function EditDocument() {
   const [currentUserName, setCurrentUserName] = useState("");
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [showSavedModal, setShowSavedModal] = useState(false);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -115,7 +116,8 @@ export default function EditDocument() {
         .eq("id", id);
 
       setDocument({ ...document, title, content });
-      alert("Document saved successfully");
+      setShowSavedModal(true);
+      setTimeout(() => setShowSavedModal(false), 2000);
     } catch (err: any) {
       alert("Error saving document: " + err.message);
     } finally {
@@ -313,11 +315,41 @@ export default function EditDocument() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
+      {/* Success Modal */}
+      {showSavedModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Document Saved!
+              </h3>
+              <p className="text-gray-600">
+                Your document has been successfully saved.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center ">
               <Link href="/dashboard">
                 <button className="text-gray-600 hover:text-gray-900">
                   ← Back
@@ -336,7 +368,7 @@ export default function EditDocument() {
               <button
                 onClick={handleSaveDocument}
                 disabled={saving || isLocked}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
+                className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
               >
                 {saving ? "Saving..." : "Save Document"}
               </button>
@@ -345,7 +377,7 @@ export default function EditDocument() {
                   ref={sendButtonRef}
                   onClick={() => setShowSendPopover((v) => !v)}
                   disabled={sendingDocument || isLocked}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
                 >
                   {sendingDocument ? (
                     <>
@@ -487,7 +519,7 @@ export default function EditDocument() {
 
         {/* Recipients sidebar or Chat panel */}
         <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
-          <div className="p-6">
+          <div className="p-2">
             {/* Chat panel - Always show for all document statuses */}
             <ChatPanel
               documentId={String(id)}
@@ -508,7 +540,7 @@ export default function EditDocument() {
                 <button
                   onClick={() => setShowModal(true)}
                   disabled={document.status !== "draft" || isLocked}
-                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                  className="px-6 py-2 rounded-full text-sm font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                 >
                   + Add
                 </button>
@@ -658,7 +690,7 @@ export default function EditDocument() {
         </div>
       )}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Add Recipient
@@ -675,7 +707,7 @@ export default function EditDocument() {
                     setNewRecipient({ ...newRecipient, email: e.target.value })
                   }
                   placeholder="recipient@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80"
                 />
               </div>
 
@@ -690,7 +722,7 @@ export default function EditDocument() {
                     setNewRecipient({ ...newRecipient, name: e.target.value })
                   }
                   placeholder="Full Name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80"
                 />
               </div>
 
@@ -708,7 +740,7 @@ export default function EditDocument() {
                     })
                   }
                   placeholder="Company Name (optional)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80"
                 />
               </div>
 
@@ -724,7 +756,7 @@ export default function EditDocument() {
                       role: e.target.value as "signer" | "viewer",
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent bg-white/80"
                 >
                   <option value="signer">Signer</option>
                   <option value="viewer">Viewer</option>
@@ -739,7 +771,7 @@ export default function EditDocument() {
                     !newRecipient.name.trim() ||
                     addingRecipient
                   }
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-white rounded-full font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
                 >
                   {addingRecipient ? (
                     <>
@@ -753,7 +785,7 @@ export default function EditDocument() {
                 <button
                   onClick={() => setShowModal(false)}
                   disabled={addingRecipient}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-md hover:bg-gray-400 disabled:bg-gray-200"
+                  className="flex-1 px-4 py-2 bg-white text-black border-2 border-black rounded-full font-medium hover:bg-gray-100 disabled:opacity-50"
                 >
                   Cancel
                 </button>

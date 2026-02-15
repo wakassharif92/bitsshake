@@ -24,6 +24,7 @@ export default function ChatPanel({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showLocation, setShowLocation] = useState(true);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showMenuDropdown, setShowMenuDropdown] = useState(false);
   const [signatureName, setSignatureName] = useState("");
   const [signatureReason, setSignatureReason] = useState("");
   const [signatureStyle, setSignatureStyle] = useState<
@@ -280,6 +281,10 @@ export default function ChatPanel({
 
   return (
     <div className="h-full flex flex-col">
+      {/* Chat Heading */}
+      <div className="border-b border-gray-200 p-4">
+        <h2 className="text-lg font-semibold text-gray-900">Conversation</h2>
+      </div>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
@@ -405,58 +410,139 @@ export default function ChatPanel({
             </button>
           </div>
         )}
-        <div className="flex flex-wrap gap-2">
-          {canAddSignature && (
+        <div className="flex gap-1.5 items-end">
+          <div className="relative">
             <button
-              onClick={() => setShowSignatureModal(true)}
-              className="px-3 py-2 bg-amber-100 text-amber-900 rounded text-sm hover:bg-amber-200"
+              onClick={() => setShowMenuDropdown(!showMenuDropdown)}
+              className="py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-300 flex-shrink-0"
               disabled={sending || isDisabled}
+              title="More options"
             >
-              ✍️ Add signature
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
             </button>
-          )}
-          <button
-            onClick={handleDownloadConversation}
-            className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
-            disabled={sending || isDisabled}
-          >
-            ⬇️ Download conversation
-          </button>
-          <label
-            className={`flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm ${
-              isDisabled
-                ? "opacity-60 cursor-not-allowed"
-                : "hover:bg-gray-200 cursor-pointer"
-            }`}
-          >
-            📎
-            <input
-              type="file"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              className="hidden"
-              accept=".pdf,.doc,.docx,.txt,.jpg,.png"
-              disabled={isDisabled}
+            {showMenuDropdown && (
+              <div className="absolute bottom-12 left-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[200px]">
+                <button
+                  onClick={() => {
+                    handleDownloadConversation();
+                    setShowMenuDropdown(false);
+                  }}
+                  disabled={sending || isDisabled}
+                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                  Download Conversation
+                </button>
+                <label
+                  className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-gray-50 transition-colors ${
+                    isDisabled
+                      ? "opacity-60 cursor-not-allowed text-gray-400"
+                      : "cursor-pointer text-gray-700"
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Attach File
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      setSelectedFile(e.target.files?.[0] || null);
+                      setShowMenuDropdown(false);
+                    }}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.txt,.jpg,.png"
+                    disabled={isDisabled}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+          <div className="relative flex-1">
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.shiftKey)) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Type a message... (Shift+Enter or Ctrl+Enter to send)"
+              className="w-full px-4 py-3 pr-12 text-sm text-black placeholder-gray-500 bg-white border border-gray-300 focus:outline-none resize-none"
+              rows={3}
+              disabled={sending || isDisabled}
+              style={{
+                maxHeight: "150px",
+                minHeight: "auto",
+                overflow: "auto",
+              }}
             />
-          </label>
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") handleSendMessage();
-            }}
-            placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm text-black placeholder-gray-500"
-            disabled={sending || isDisabled}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={sending || !message.trim() || isDisabled}
-            className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
-          >
-            {sending ? "..." : "Send"}
-          </button>
+            <button
+              onClick={handleSendMessage}
+              disabled={sending || !message.trim() || isDisabled}
+              className="absolute bottom-2 right-2 p-2 text-black rounded-full font-medium hover:bg-gray-100 transition-all duration-300 ease-out disabled:opacity-50 flex items-center justify-center"
+            >
+              {sending ? (
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M16.6915026,12.4744748 L3.50612381,13.2599618 C3.19218622,13.2599618 3.03521743,13.4170592 3.03521743,13.5741566 L1.15159189,20.0151496 C0.8376543,20.8006365 0.99,21.89 1.77946707,22.52 C2.40337696,22.99 3.50612381,23.1 4.13399899,22.99 L21.714504,14.0454487 C22.6563168,13.5741566 23.1272231,12.6315722 22.9702544,11.6889879 L4.13399899,1.01 C3.34915502,0.9 2.40337696,0.99 1.77946707,1.4632036 C0.994623095,2.0974054 0.837654326,3.1868184 1.15159189,3.97230524 L3.03521743,10.4132983 C3.03521743,10.5703957 3.34915502,10.7274931 3.50612381,10.7274931 L16.6915026,11.5129799 C16.6915026,11.5129799 17.1624089,11.5129799 17.1624089,12.0374696 C17.1624089,12.4744748 16.6915026,12.4744748 16.6915026,12.4744748 Z" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
+        {canAddSignature && (
+          <button
+            onClick={() => setShowSignatureModal(true)}
+            className="px-4 py-2 bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-white rounded-full text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+          >
+            ✍️ Signature
+          </button>
+        )}
       </div>
 
       {showSignatureModal && (
