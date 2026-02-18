@@ -181,11 +181,23 @@ export default function Pricing() {
     <div className="min-h-screen bg-gray-50">
       <header className="px-6 py-10">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition"
-          >
-            ← Back to dashboard
+          <Link href="/dashboard">
+            <button className="h-10 w-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-black/80 transition-colors">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
           </Link>
           <span className="text-sm font-semibold text-gray-900">
             Bits Shake
