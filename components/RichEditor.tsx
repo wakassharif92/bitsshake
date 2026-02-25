@@ -45,13 +45,14 @@ export default function RichEditor({
   const [mounted, setMounted] = useState(false);
   const [textColor, setTextColor] = useState("#000000");
   const [highlightColor, setHighlightColor] = useState("#FFF00");
+  const [showHeadingDropdown, setShowHeadingDropdown] = useState(false);
 
   const editor = useEditor({
     editable: !readOnly,
     extensions: [
       StarterKit.configure({
         heading: {
-          levels: [1, 2, 3],
+          levels: [1, 2, 3, 4],
         },
         bulletList: false,
         orderedList: false,
@@ -152,8 +153,14 @@ export default function RichEditor({
         return editor.isActive("bulletList");
       case "orderedList":
         return editor.isActive("orderedList");
+      case "heading1":
+        return editor.isActive("heading", { level: 1 });
       case "heading2":
         return editor.isActive("heading", { level: 2 });
+      case "heading3":
+        return editor.isActive("heading", { level: 3 });
+      case "heading4":
+        return editor.isActive("heading", { level: 4 });
       case "alignLeft": {
         const alignment =
           editor.getAttributes("paragraph")?.textAlign || "left";
@@ -200,18 +207,98 @@ export default function RichEditor({
 
         <div className="w-px bg-gray-300"></div>
 
+        {/* Heading Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowHeadingDropdown(!showHeadingDropdown)}
+            className={`px-3 py-2 rounded text-black flex items-center gap-1 min-w-[80px] ${
+              editor.isActive("heading")
+                ? "bg-blue-200 text-blue-700"
+                : "hover:bg-gray-200"
+            }`}
+            title="Headings"
+          >
+            <span className="text-sm font-medium">
+              {editor.isActive("heading", { level: 1 })
+                ? "H1"
+                : editor.isActive("heading", { level: 2 })
+                  ? "H2"
+                  : editor.isActive("heading", { level: 3 })
+                    ? "H3"
+                    : editor.isActive("heading", { level: 4 })
+                      ? "H4"
+                      : "Normal"}
+            </span>
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+          {showHeadingDropdown && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 min-w-[120px]">
+              <button
+                onClick={() => {
+                  editor.chain().focus().setParagraph().run();
+                  setShowHeadingDropdown(false);
+                }}
+                className={`w-full text-left px-4 py-2 hover:bg-gray-100 text-black ${
+                  !editor.isActive("heading") ? "bg-blue-50" : ""
+                }`}
+              >
+                <span className="text-base">Normal</span>
+              </button>
+              <button
+                onClick={() => {
+                  editor.chain().focus().setHeading({ level: 1 }).run();
+                  setShowHeadingDropdown(false);
+                }}
+                className={`w-full text-left px-4 py-2 hover:bg-gray-100 text-black ${
+                  isButtonActive("heading1") ? "bg-blue-50" : ""
+                }`}
+              >
+                <span className="text-2xl font-bold">H1</span>
+              </button>
+              <button
+                onClick={() => {
+                  editor.chain().focus().setHeading({ level: 2 }).run();
+                  setShowHeadingDropdown(false);
+                }}
+                className={`w-full text-left px-4 py-2 hover:bg-gray-100 text-black ${
+                  isButtonActive("heading2") ? "bg-blue-50" : ""
+                }`}
+              >
+                <span className="text-xl font-bold">H2</span>
+              </button>
+              <button
+                onClick={() => {
+                  editor.chain().focus().setHeading({ level: 3 }).run();
+                  setShowHeadingDropdown(false);
+                }}
+                className={`w-full text-left px-4 py-2 hover:bg-gray-100 text-black ${
+                  isButtonActive("heading3") ? "bg-blue-50" : ""
+                }`}
+              >
+                <span className="text-lg font-bold">H3</span>
+              </button>
+              <button
+                onClick={() => {
+                  editor.chain().focus().setHeading({ level: 4 }).run();
+                  setShowHeadingDropdown(false);
+                }}
+                className={`w-full text-left px-4 py-2 hover:bg-gray-100 text-black ${
+                  isButtonActive("heading4") ? "bg-blue-50" : ""
+                }`}
+              >
+                <span className="text-base font-bold">H4</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Text formatting */}
-        <button
-          onClick={toggleHeading2}
-          className={`p-2 rounded text-black ${
-            isButtonActive("heading2")
-              ? "bg-blue-200 text-blue-700"
-              : "hover:bg-gray-200"
-          }`}
-          title="Heading 2"
-        >
-          <Heading2 size={18} />
-        </button>
 
         <button
           onClick={toggleBold}
@@ -318,7 +405,8 @@ export default function RichEditor({
         <div className="w-px bg-gray-300"></div>
 
         {/* Text Color */}
-        <div className="flex items-center">
+        <div className="flex flex-col items-center gap-1">
+          <label className="text-xs text-gray-600">Font</label>
           <input
             type="color"
             value={textColor}
@@ -326,13 +414,14 @@ export default function RichEditor({
               setTextColor(e.target.value);
               editor?.chain().focus().setColor(e.target.value).run();
             }}
-            className="w-10 h-10 cursor-pointer rounded"
+            className="w-8 h-8 cursor-pointer rounded"
             title="Text Color"
           />
         </div>
 
         {/* Highlight Color */}
-        <div className="flex items-center">
+        <div className="flex flex-col items-center gap-1">
+          <label className="text-xs text-gray-600">Highlight</label>
           <input
             type="color"
             value={highlightColor}
@@ -344,7 +433,7 @@ export default function RichEditor({
                 .setHighlight({ color: e.target.value })
                 .run();
             }}
-            className="w-10 h-10 cursor-pointer rounded"
+            className="w-8 h-8 cursor-pointer rounded"
             title="Highlight Color"
           />
         </div>
@@ -388,7 +477,7 @@ export default function RichEditor({
       {/* Editor content */}
       <EditorContent
         editor={editor}
-        className="flex-1 overflow-auto p-4 text-black [&_.ProseMirror]:text-black [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-full [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:text-black [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:text-black [&_li]:text-black"
+        className="flex-1 overflow-auto p-4 text-black [&_.ProseMirror]:text-black [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-full [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:text-black [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:text-black [&_li]:text-black [&_h1]:text-4xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:mb-3 [&_h2]:mt-5 [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:mb-2 [&_h3]:mt-4 [&_h4]:text-xl [&_h4]:font-bold [&_h4]:mb-2 [&_h4]:mt-3"
       />
     </div>
   );

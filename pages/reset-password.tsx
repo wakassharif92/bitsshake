@@ -104,7 +104,7 @@ export default function ResetPassword() {
               </span>
               <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-900 text-white">
                 {loading ? (
-                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" />
                 ) : (
                   "→"
                 )}

@@ -58,7 +58,7 @@ export default function AdminGate() {
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
           <Image
-            src="/bitsshake-02.png"
+            src="/bitsshake-logo-4.png"
             alt="BitsShake Logo"
             width={400}
             height={300}

@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS recipients (
   email varchar(255) NOT NULL,
   name varchar(255),
   company_name varchar(255),
+  position varchar(255),
   role varchar(50) NOT NULL,
   status varchar(50) DEFAULT 'pending',
   signature_text text,

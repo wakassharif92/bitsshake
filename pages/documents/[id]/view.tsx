@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Document, Recipient, AuditLog, ChatMessage, User } from "@/lib/types";
 import { hasPremiumAccess } from "@/lib/subscription";
 import ChatPanel from "@/components/ChatPanel";
+import Toast, { ToastMessage } from "@/components/Toast";
 
 export default function ViewDocument() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -15,6 +16,15 @@ export default function ViewDocument() {
   const [showSendPopover, setShowSendPopover] = useState(false);
   const [sendingDocument, setSendingDocument] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showSendEmailModal, setShowSendEmailModal] = useState(false);
+  const [showRevertModal, setShowRevertModal] = useState(false);
+  const [revertReason, setRevertReason] = useState("");
+  const [revertingDocument, setRevertingDocument] = useState(false);
+  const sendPopoverRef = useRef<HTMLDivElement | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "conversation" | "logs" | "recipients"
+  >("conversation");
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   // Send via Email (same as edit page)
   const handleSendViaEmail = async () => {
     if (!hasPremiumAccess(currentUserData) && !isPublicView) {
@@ -25,15 +35,11 @@ export default function ViewDocument() {
       alert("Please add at least one recipient before sending");
       return;
     }
+    setShowSendEmailModal(true);
+  };
 
-    if (
-      !confirm(
-        "Send this document to all recipients? They will receive signing links via email.",
-      )
-    ) {
-      return;
-    }
-
+  const confirmSendViaEmail = async () => {
+    setShowSendEmailModal(false);
     setSendingDocument(true);
     try {
       // Get auth session for the token
@@ -75,6 +81,65 @@ export default function ViewDocument() {
     }
     setShowLinkModal(true);
   };
+
+  const handleOpenRevertModal = () => {
+    if (!document || document.status !== "sent") return;
+    setRevertReason("");
+    setShowRevertModal(true);
+  };
+
+  const confirmRevertDocument = async () => {
+    if (!id || !document) return;
+
+    const reason = revertReason.trim();
+    if (!reason) {
+      alert("Please provide a revert reason.");
+      return;
+    }
+
+    if (!canRevertDocument) {
+      alert("You are not allowed to revert this document.");
+      return;
+    }
+
+    setRevertingDocument(true);
+    try {
+      const response = await fetch("/api/revert-document", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: String(id),
+          senderEmail: currentUserEmail,
+          actorEmail: currentUserEmail,
+          actorName: currentUserName || "Signer",
+          reason,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Failed to revert document");
+      }
+
+      setDocument((prev) => (prev ? { ...prev, status: "revert" } : prev));
+
+      setShowRevertModal(false);
+      setRevertReason("");
+      if (isDocumentAdmin) {
+        router.push(`/documents/${id}/edit`);
+      } else {
+        setToast({
+          id: String(Date.now()),
+          message: data.message || "Document reverted successfully",
+          type: "success",
+        });
+      }
+    } catch (err: any) {
+      alert("Error reverting document: " + err.message);
+    } finally {
+      setRevertingDocument(false);
+    }
+  };
   const router = useRouter();
   const { id, email } = router.query;
   const [document, setDocument] = useState<Document | null>(null);
@@ -106,6 +171,22 @@ export default function ViewDocument() {
   useEffect(() => {
     fetchConfig();
   }, []);
+
+  useEffect(() => {
+    if (!showSendPopover) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (sendPopoverRef.current && !sendPopoverRef.current.contains(target)) {
+        setShowSendPopover(false);
+      }
+    };
+
+    globalThis.document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      globalThis.document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSendPopover]);
 
   useEffect(() => {
     if (!id) return;
@@ -369,7 +450,7 @@ export default function ViewDocument() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -379,6 +460,15 @@ export default function ViewDocument() {
   }
 
   const hasAccess = isPublicView ? true : hasPremiumAccess(currentUserData);
+  const isDocumentAdmin =
+    !isPublicView && !!currentUserId && currentUserId === document.admin_id;
+  const normalizedCurrentEmail = (currentUserEmail || "").trim().toLowerCase();
+  const isCurrentSigner = recipients.some(
+    (r) =>
+      (r.email || "").trim().toLowerCase() === normalizedCurrentEmail &&
+      r.role === "signer",
+  );
+  const canRevertDocument = document.status === "sent" && (isDocumentAdmin || isCurrentSigner);
 
   const formatTimeAgo = (dateString: string) => {
     const diffMs = Date.now() - new Date(dateString).getTime();
@@ -434,6 +524,114 @@ export default function ViewDocument() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Send Email Confirmation Modal */}
+      {showSendEmailModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Send Document?
+              </h3>
+              <p className="text-gray-600">
+                Send this document to all {recipients.length} recipient
+                {recipients.length !== 1 ? "s" : ""}? They will receive signing
+                links via email.
+              </p>
+              <div className="flex gap-3 w-full mt-6">
+                <button
+                  onClick={() => setShowSendEmailModal(false)}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSendViaEmail}
+                  disabled={sendingDocument}
+                  className="flex-1 px-6 py-3 rounded-xl bg-black text-white font-medium hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  {sendingDocument ? "Sending..." : "Send"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRevertModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-red-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h14a4 4 0 110 8H9m0 0l4-4m-4 4l4 4"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Revert Document?
+              </h3>
+              <p className="text-gray-600">
+                Revert will unlock this sent document for editing and set
+                its status to <strong>revert</strong>.
+              </p>
+              <div className="w-full text-left">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Revert reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={revertReason}
+                  onChange={(e) => setRevertReason(e.target.value)}
+                  rows={4}
+                  placeholder="Explain why this document is being reverted..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent text-black"
+                  disabled={revertingDocument}
+                />
+              </div>
+              <div className="flex gap-3 w-full mt-2">
+                <button
+                  onClick={() => setShowRevertModal(false)}
+                  disabled={revertingDocument}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRevertDocument}
+                  disabled={revertingDocument || !revertReason.trim()}
+                  className="flex-1 px-6 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {revertingDocument ? "Reverting..." : "Revert"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -441,7 +639,7 @@ export default function ViewDocument() {
             <div className="flex items-center gap-4">
               {!isPublicView && (
                 <Link href="/dashboard">
-                  <button className="h-10 w-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-black/80 transition-colors">
+                  <button className="h-10 w-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-5 w-5"
@@ -463,9 +661,11 @@ export default function ViewDocument() {
                 <h1 className="text-3xl font-bold text-gray-900">
                   {document.title}
                 </h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  Status: {document.status}
-                </p>
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full border border-red-600 text-red-600 text-xs font-semibold uppercase tracking-wide">
+                    {document.status}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="flex gap-2 items-center">
@@ -478,7 +678,7 @@ export default function ViewDocument() {
                   <button
                     onClick={handleDownloadPDF}
                     disabled={!allSignersSigned || !hasAccess}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-white text-black border border-black rounded-4xl hover:bg-gray-50 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:border-gray-400 font-serif cursor-pointer"
                     title={
                       !hasAccess
                         ? "Upgrade to download"
@@ -492,18 +692,17 @@ export default function ViewDocument() {
                 );
               })()}
               {/* Show Send to Recipients button for admin only */}
-              {currentUserId &&
-                document &&
-                currentUserId === document.admin_id && (
-                  <div className="relative">
+              {isDocumentAdmin && (
+                <div className="flex items-center gap-2">
+                  <div className="relative" ref={sendPopoverRef}>
                     <button
                       onClick={() => setShowSendPopover((v) => !v)}
                       disabled={sendingDocument || !hasAccess}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="font-serif px-4 py-2 bg-black text-white border border-black rounded-4xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:border-gray-400 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {sendingDocument ? (
                         <>
-                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                          <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full"></div>
                           Sending...
                         </>
                       ) : (
@@ -511,23 +710,24 @@ export default function ViewDocument() {
                       )}
                     </button>
                     {showSendPopover && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50">
+                      <div className="absolute right-0 mt-2 w-52 bg-white border border-black rounded-xl shadow-xl z-50 overflow-hidden">
                         <button
                           onClick={() => {
                             setShowSendPopover(false);
                             handleSendViaEmail();
                           }}
-                          className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
+                          className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100 font-serif cursor-pointer"
                           disabled={sendingDocument || !hasAccess}
                         >
                           Send via Email
                         </button>
+                        <div className="border-t border-black/10" />
                         <button
                           onClick={() => {
                             setShowSendPopover(false);
                             handleSendViaLink();
                           }}
-                          className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
+                          className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100 font-serif cursor-pointer"
                           disabled={sendingDocument || !hasAccess}
                         >
                           View Links
@@ -535,7 +735,17 @@ export default function ViewDocument() {
                       </div>
                     )}
                   </div>
-                )}
+                  {canRevertDocument && (
+                    <button
+                      onClick={handleOpenRevertModal}
+                      disabled={revertingDocument || !hasAccess}
+                      className="font-serif px-4 py-2 bg-red-600 text-white border border-red-600 rounded-4xl hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:border-gray-400 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {revertingDocument ? "Reverting..." : "Revert"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -566,7 +776,7 @@ export default function ViewDocument() {
               {/* Signatures section */}
               {recipients.filter((r) => r.role === "signer").length > 0 && (
                 <div className="mt-12 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6 font-serif">
                     Signatures
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -654,230 +864,266 @@ export default function ViewDocument() {
 
           {/* Details panel */}
           <div className="space-y-6">
-            {/* Recipients */}
-            <div className="bg-white shadow rounded-lg p-6">
-              {/* <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">
+            {/* Tabs */}
+            <div className="bg-white shadow rounded-2xl">
+              <div className="rounded-2xl flex gap-2 p-4 border-b border-gray-200">
+                <button
+                  onClick={() => setActiveTab("conversation")}
+                  className={`px-4 py-2 rounded-4xl font-medium transition-colors text-[14px] font-serif cursor-pointer ${
+                    activeTab === "conversation"
+                      ? "bg-black text-white"
+                      : "bg-transparent text-black border border-black hover:bg-gray-50"
+                  }`}
+                >
+                  Conversation
+                </button>
+                <button
+                  onClick={() => setActiveTab("logs")}
+                  className={`px-4 py-1 rounded-4xl font-medium transition-colors font-serif text-[14px] cursor-pointer ${
+                    activeTab === "logs"
+                      ? "bg-black text-white"
+                      : "bg-transparent text-black border border-black hover:bg-gray-50"
+                  }`}
+                >
+                  Logs
+                </button>
+                <button
+                  onClick={() => setActiveTab("recipients")}
+                  className={`px-4 py-2 rounded-4xl font-medium transition-colors font-serif text-[14px] cursor-pointer ${
+                    activeTab === "recipients"
+                      ? "bg-black text-white"
+                      : "bg-transparent text-black border border-black hover:bg-gray-50"
+                  }`}
+                >
                   Recipients
-                </h2>
-                {currentUserId &&
-                  document &&
-                  currentUserId === document.admin_id && (
-                    <button
-                      onClick={() =>
-                        alert(
-                          'To send emails, please use the "Send to Recipients" button in the Edit Document page.',
-                        )
-                      }
-                      className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-                    >
-                      Send to Recipients
-                    </button>
-                  )}
-              </div> */}
-              <div className="space-y-3">
-                {recipients.map((recipient) => {
-                  // Generate signing link (same as in edit.tsx)
-                  const baseUrl =
-                    process.env.NEXT_PUBLIC_APP_URL ||
-                    (typeof window !== "undefined"
-                      ? window.location.origin
-                      : "");
-                  const link = `${baseUrl}/sign/${document.id}?email=${encodeURIComponent(recipient.email)}`;
-                  const isAdmin =
-                    currentUserId &&
-                    document &&
-                    currentUserId === document.admin_id;
-                  return (
-                    <div
-                      key={recipient.id}
-                      className="border border-gray-200 rounded-lg p-3"
-                    >
-                      <div>
-                        <p className="font-medium text-sm text-gray-900">
-                          {recipient.email}
-                        </p>
-                        {recipient.name && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            Name:{" "}
-                            <span className="font-medium">
-                              {recipient.name}
-                            </span>
-                          </p>
-                        )}
-                        {recipient.company_name && (
-                          <p className="text-xs text-gray-600">
-                            Company:{" "}
-                            <span className="font-medium">
-                              {recipient.company_name}
-                            </span>
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-600 mt-1">
-                          Role:{" "}
-                          <span className="font-medium">{recipient.role}</span>
-                        </p>
-                        {recipient.role === "signer" && (
-                          <p className="text-xs text-gray-600">
-                            Status:{" "}
-                            <span
-                              className={`font-medium ${
-                                recipient.status === "pending"
-                                  ? "text-yellow-600"
-                                  : recipient.status === "signed"
-                                    ? "text-green-600"
-                                    : "text-blue-600"
-                              }`}
-                            >
-                              {recipient.status}
-                            </span>
-                          </p>
-                        )}
-                        {recipient.signed_at && (
-                          <>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Signed:{" "}
-                              {new Date(recipient.signed_at).toLocaleString()}
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="p-6">
+                {/* Recipients Tab */}
+                {activeTab === "recipients" && (
+                  <div className="space-y-3">
+                    {recipients.map((recipient) => {
+                      // Generate signing link (same as in edit.tsx)
+                      const baseUrl =
+                        process.env.NEXT_PUBLIC_APP_URL ||
+                        (typeof window !== "undefined"
+                          ? window.location.origin
+                          : "");
+                      const link = `${baseUrl}/sign/${document.id}?email=${encodeURIComponent(recipient.email)}`;
+                      const isAdmin =
+                        currentUserId &&
+                        document &&
+                        currentUserId === document.admin_id;
+                      return (
+                        <div
+                          key={recipient.id}
+                          className="border border-gray-200 rounded-lg p-3"
+                        >
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">
+                              {recipient.email}
                             </p>
-                            {showLocation && (
+                            {recipient.name && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                Name:{" "}
+                                <span className="font-medium">
+                                  {recipient.name}
+                                </span>
+                              </p>
+                            )}
+                            {recipient.company_name && (
+                              <p className="text-xs text-gray-600">
+                                Company:{" "}
+                                <span className="font-medium">
+                                  {recipient.company_name}
+                                </span>
+                              </p>
+                            )}
+                            {recipient.position && (
+                              <p className="text-xs text-gray-600">
+                                Position:{" "}
+                                <span className="font-medium">
+                                  {recipient.position}
+                                </span>
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-600 mt-1">
+                              Role:{" "}
+                              <span className="font-medium">
+                                {recipient.role}
+                              </span>
+                            </p>
+                            {recipient.role === "signer" && (
+                              <p className="text-xs text-gray-600">
+                                Status:{" "}
+                                <span
+                                  className={`font-medium ${
+                                    recipient.status === "pending"
+                                      ? "text-yellow-600"
+                                      : recipient.status === "signed"
+                                        ? "text-green-600"
+                                        : "text-blue-600"
+                                  }`}
+                                >
+                                  {recipient.status}
+                                </span>
+                              </p>
+                            )}
+                            {recipient.signed_at && (
                               <>
-                                {recipient.signed_by_country &&
-                                  recipient.signed_by_city && (
-                                    <p className="text-xs text-gray-600">
-                                      Location: {recipient.signed_by_city},{" "}
-                                      {recipient.signed_by_country}
-                                    </p>
-                                  )}
-                                {recipient.signed_by_ip && (
-                                  <p className="text-xs text-gray-600">
-                                    IP: {recipient.signed_by_ip}
-                                  </p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  Signed:{" "}
+                                  {new Date(
+                                    recipient.signed_at,
+                                  ).toLocaleString()}
+                                </p>
+                                {showLocation && (
+                                  <>
+                                    {recipient.signed_by_country &&
+                                      recipient.signed_by_city && (
+                                        <p className="text-xs text-gray-600">
+                                          Location: {recipient.signed_by_city},{" "}
+                                          {recipient.signed_by_country}
+                                        </p>
+                                      )}
+                                    {recipient.signed_by_ip && (
+                                      <p className="text-xs text-gray-600">
+                                        IP: {recipient.signed_by_ip}
+                                      </p>
+                                    )}
+                                  </>
                                 )}
                               </>
                             )}
-                          </>
-                        )}
-                        {/* Show signing link and copy button if document is locked (status not draft), not completed, and user is admin */}
-                        {document.status !== "draft" &&
-                          document.status !== "completed" &&
-                          isAdmin && (
-                            <div className="mt-3">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-700 break-all bg-gray-50 rounded p-1 border border-gray-100">
-                                  {link}
-                                </span>
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(link);
-                                    alert("Link copied to clipboard!");
-                                  }}
-                                  disabled={!hasAccess}
-                                  className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1 ml-1 disabled:opacity-50"
-                                >
-                                  Copy Link
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                            {/* Show signing link and copy button if document is locked (status not draft), not completed, and user is admin */}
+                            {document.status !== "draft" &&
+                              document.status !== "completed" &&
+                              isAdmin && (
+                                <div className="mt-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-700 break-all bg-gray-50 rounded p-1 border border-gray-100">
+                                      {link}
+                                    </span>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(link);
+                                        setToast({
+                                          id: String(Date.now()),
+                                          message: "Link copied to clipboard!",
+                                          type: "success",
+                                        });
+                                      }}
+                                      disabled={!hasAccess}
+                                      className="bg-black hover:bg-gray-800 text-white text-xs px-3 py-1.5 ml-1 rounded-full disabled:opacity-50 cursor-pointer transition-colors"
+                                      aria-label="Copy link"
+                                    >
+                                      <svg
+                                        className="w-4 h-4"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                      >
+                                        <path d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1z" />
+                                        <path d="M19 5H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-            {/* Chat Panel - Always show for all document statuses */}
-            <div
-              className="bg-white shadow rounded-lg"
-              style={{ height: "500px" }}
-            >
-              <div className="h-full p-4">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">
-                  Discussion
-                </h2>
-                <div className="h-[calc(100%-3rem)]">
-                  <ChatPanel
-                    documentId={String(id)}
-                    userEmail={currentUserEmail}
-                    userName={currentUserName}
-                    isAdmin={currentUserId === document.admin_id}
-                    isDisabled={!hasAccess}
-                  />
-                </div>
-              </div>
-            </div>
+                {/* Conversation Tab */}
+                {activeTab === "conversation" && (
+                  <div style={{ height: "500px" }}>
+                    <ChatPanel
+                      documentId={String(id)}
+                      userEmail={currentUserEmail}
+                      userName={currentUserName}
+                      isAdmin={currentUserId === document.admin_id}
+                      isDisabled={!hasAccess}
+                      recipients={recipients}
+                    />
+                  </div>
+                )}
 
-            {/* Audit Log */}
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                Activity Log
-              </h2>
-              <div className="space-y-3">
-                {auditLogs.length === 0 ? (
-                  <p className="text-sm text-gray-500">No activity yet</p>
-                ) : (
-                  aggregatedAuditLogs.map((entry) => (
-                    <div
-                      key={`${entry.log.id}-${entry.type}`}
-                      className="text-sm border-l-2 border-gray-300 pl-3 py-2 mb-3 bg-gray-50 p-3 rounded"
-                    >
-                      <p className="font-medium text-gray-900">
-                        {entry.type === "open"
-                          ? "DOCUMENT_OPENED"
-                          : entry.log.action}
-                      </p>
-                      <p className="text-xs text-gray-700 mt-1">
-                        <span className="font-medium">Email:</span>{" "}
-                        {entry.log.actor_email}
-                      </p>
-                      {entry.type === "open" && (
-                        <p className="text-xs text-gray-700 mt-1">
-                          Opened {entry.count} times
-                        </p>
-                      )}
-                      {entry.log.details?.recipient_name && (
-                        <p className="text-xs text-gray-700">
-                          <span className="font-medium">Name:</span>{" "}
-                          {entry.log.details.recipient_name}
-                        </p>
-                      )}
-                      {entry.log.details?.recipient_company && (
-                        <p className="text-xs text-gray-700">
-                          <span className="font-medium">Company:</span>{" "}
-                          {entry.log.details.recipient_company}
-                        </p>
-                      )}
-                      {showLocation && (
-                        <>
-                          {entry.log.details?.location && (
-                            <p className="text-xs text-gray-700">
-                              <span className="font-medium">Location:</span>{" "}
-                              {entry.log.details.location}
+                {/* Logs Tab */}
+                {activeTab === "logs" && (
+                  <div className="space-y-3">
+                    {auditLogs.length === 0 ? (
+                      <p className="text-sm text-gray-500">No activity yet</p>
+                    ) : (
+                      aggregatedAuditLogs.map((entry) => (
+                        <div
+                          key={`${entry.log.id}-${entry.type}`}
+                          className="text-sm border-l-2 border-gray-300 pl-3 py-2 mb-3 bg-gray-50 p-3 rounded"
+                        >
+                          <p className="font-medium text-gray-900">
+                            {entry.type === "open"
+                              ? "DOCUMENT_OPENED"
+                              : entry.log.action}
+                          </p>
+                          <p className="text-xs text-gray-700 mt-1">
+                            <span className="font-medium">Email:</span>{" "}
+                            {entry.log.actor_email}
+                          </p>
+                          {entry.type === "open" && (
+                            <p className="text-xs text-gray-700 mt-1">
+                              Opened {entry.count} times
                             </p>
                           )}
-                          {entry.log.details?.city &&
-                            entry.log.details?.country && (
-                              <p className="text-xs text-gray-700">
-                                <span className="font-medium">Location:</span>{" "}
-                                {entry.log.details.city},{" "}
-                                {entry.log.details.country}
-                              </p>
-                            )}
-                          {entry.log.ip_address && (
+                          {entry.log.details?.recipient_name && (
                             <p className="text-xs text-gray-700">
-                              <span className="font-medium">IP:</span>{" "}
-                              {entry.log.ip_address}
+                              <span className="font-medium">Name:</span>{" "}
+                              {entry.log.details.recipient_name}
                             </p>
                           )}
-                        </>
-                      )}
-                      <p className="text-xs text-gray-500 mt-1">
-                        {entry.type === "open"
-                          ? `Last opened: ${formatTimeAgo(entry.log.timestamp)}`
-                          : formatTimeAgo(entry.log.timestamp)}
-                      </p>
-                    </div>
-                  ))
+                          {entry.log.details?.recipient_company && (
+                            <p className="text-xs text-gray-700">
+                              <span className="font-medium">Company:</span>{" "}
+                              {entry.log.details.recipient_company}
+                            </p>
+                          )}
+                          {showLocation && (
+                            <>
+                              {entry.log.details?.location && (
+                                <p className="text-xs text-gray-700">
+                                  <span className="font-medium">Location:</span>{" "}
+                                  {entry.log.details.location}
+                                </p>
+                              )}
+                              {entry.log.details?.city &&
+                                entry.log.details?.country && (
+                                  <p className="text-xs text-gray-700">
+                                    <span className="font-medium">
+                                      Location:
+                                    </span>{" "}
+                                    {entry.log.details.city},{" "}
+                                    {entry.log.details.country}
+                                  </p>
+                                )}
+                              {entry.log.ip_address && (
+                                <p className="text-xs text-gray-700">
+                                  <span className="font-medium">IP:</span>{" "}
+                                  {entry.log.ip_address}
+                                </p>
+                              )}
+                            </>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            {entry.type === "open"
+                              ? `Last opened: ${formatTimeAgo(entry.log.timestamp)}`
+                              : formatTimeAgo(entry.log.timestamp)}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -887,8 +1133,8 @@ export default function ViewDocument() {
 
       {/* Link Modal */}
       {showLinkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Signing Links
             </h3>
@@ -914,9 +1160,13 @@ export default function ViewDocument() {
                             : "");
                         const link = `${baseUrl}/sign/${id}?email=${encodeURIComponent(recipient.email)}`;
                         navigator.clipboard.writeText(link);
-                        alert("Link copied to clipboard!");
+                        setToast({
+                          id: String(Date.now()),
+                          message: "Link copied to clipboard!",
+                          type: "success",
+                        });
                       }}
-                      className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1"
+                      className="bg-black hover:bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                     >
                       Copy Link
                     </button>
@@ -926,13 +1176,15 @@ export default function ViewDocument() {
             </div>
             <button
               onClick={() => setShowLinkModal(false)}
-              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer"
             >
               Close
             </button>
           </div>
         </div>
       )}
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

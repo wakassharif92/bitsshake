@@ -6,33 +6,30 @@ interface EmailData {
 
 export async function sendEmail(data: EmailData) {
   try {
-    // Email sending - configure with your preferred service
-    // For now, just log to console
-    // You can integrate with Resend, SendGrid, or Supabase email here
-    console.log("Email to be sent:", {
-      to: data.to,
-      subject: data.subject,
-      body: "Check console for HTML content",
+    // Send emails via Resend with verified domain
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "hello@bitsoclock.com",
+        to: data.to,
+        subject: data.subject,
+        html: data.html,
+      }),
     });
 
-    // Example with Resend (uncomment and add API key to .env)
-    // const response = await fetch("https://api.resend.com/emails", {
-    //   method: "POST",
-    //   headers: {
-    //     "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify({
-    //     from: process.env.SENDER_EMAIL || "noreply@bitsshake.com",
-    //     to: data.to,
-    //     subject: data.subject,
-    //     html: data.html,
-    //   }),
-    // });
+    const responseData = await response.json();
 
-    // if (!response.ok) throw new Error("Email service failed");
+    if (!response.ok) {
+      console.error("Email sending error:", responseData);
+      throw new Error(responseData.message || "Email service failed");
+    }
 
-    return { success: true };
+    console.log("Email sent successfully:", responseData);
+    return { success: true, data: responseData };
   } catch (err: any) {
     console.error("Email sending error:", err);
     return { success: false, error: err.message };

@@ -23,12 +23,7 @@ export default function Toast({ toast, onClose }: ToastProps) {
 
   if (!toast) return null;
 
-  const bgColor =
-    toast.type === "success"
-      ? "bg-green-600"
-      : toast.type === "error"
-        ? "bg-red-600"
-        : "bg-blue-600";
+  const bgColor = "bg-black";
 
   return (
     <div

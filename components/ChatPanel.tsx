@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { ChatMessage } from "@/lib/types";
+import { ChatMessage, Recipient } from "@/lib/types";
 
 interface ChatPanelProps {
   documentId: string;
@@ -8,6 +8,7 @@ interface ChatPanelProps {
   userName: string;
   isAdmin: boolean;
   isDisabled?: boolean;
+  recipients?: Recipient[];
 }
 
 export default function ChatPanel({
@@ -16,6 +17,7 @@ export default function ChatPanel({
   userName,
   isAdmin,
   isDisabled = false,
+  recipients = [],
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,30 @@ export default function ChatPanel({
     "cursive" | "script" | "normal"
   >("cursive");
   const [canAddSignature, setCanAddSignature] = useState(false);
+  const [openInfoId, setOpenInfoId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const normalizeEmail = (email?: string) => (email || "").trim().toLowerCase();
+
+  const getRecipientByEmail = (email: string) => {
+    const normalized = normalizeEmail(email);
+    return recipients.find((r) => normalizeEmail(r.email) === normalized);
+  };
+
+  const getRoleLabel = (email: string) => {
+    const normalized = normalizeEmail(email);
+    if (normalized && normalized === normalizeEmail(userEmail) && isAdmin) {
+      return "admin";
+    }
+    const recipientMatch = getRecipientByEmail(email);
+    if (recipientMatch?.role) {
+      return recipientMatch.role;
+    }
+    if (normalized && normalized === normalizeEmail(userEmail)) {
+      return "user";
+    }
+    return "user";
+  };
 
   const getSignatureFontFamily = (style: "cursive" | "script" | "normal") => {
     if (style === "script") {
@@ -55,6 +80,44 @@ export default function ChatPanel({
   useEffect(() => {
     checkSignaturePermission();
   }, [documentId, userEmail]);
+
+  useEffect(() => {
+    if (!openInfoId) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (
+        target.closest('[data-info-popover="true"]') ||
+        target.closest('[data-info-button="true"]')
+      ) {
+        return;
+      }
+      setOpenInfoId(null);
+    };
+    globalThis.document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      globalThis.document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openInfoId]);
+
+  useEffect(() => {
+    if (!showMenuDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (
+        target.closest('[data-menu-dropdown="true"]') ||
+        target.closest('[data-menu-button="true"]')
+      ) {
+        return;
+      }
+      setShowMenuDropdown(false);
+    };
+    globalThis.document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      globalThis.document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMenuDropdown]);
 
   const fetchConfig = async () => {
     try {
@@ -274,7 +337,7 @@ export default function ChatPanel({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -282,21 +345,26 @@ export default function ChatPanel({
   return (
     <div className="h-full flex flex-col">
       {/* Chat Heading */}
-      <div className="border-b border-gray-200 p-4">
-        <h2 className="text-lg font-semibold text-gray-900">Conversation</h2>
-      </div>
+      {/* <div className="border-b border-gray-200 p-4">
+        <h2 className="text-lg font-semibold text-gray-900 font-serif">
+          Conversation
+        </h2>
+      </div> */}
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-4">
+          <div className="text-center text-gray-500 mt-4 font-serif">
             No messages yet. Start a conversation!
           </div>
         ) : (
           messages.map((msg) => {
             const isSignature = msg.message?.startsWith("[SIGNATURE]");
-            const showHeader = msg.sender_email !== userEmail || isSignature;
+            const isRevert = msg.message?.startsWith("[REVERT]");
             const signatureBody = isSignature
               ? msg.message.replace("[SIGNATURE]", "").trim()
+              : "";
+            const revertReason = isRevert
+              ? msg.message.replace("[REVERT]", "").trim()
               : "";
             const [sigName, sigReason, sigStyleRaw] = signatureBody
               ? signatureBody.split("||").map((part) => part.trim())
@@ -305,51 +373,121 @@ export default function ChatPanel({
               sigStyleRaw === "script" || sigStyleRaw === "normal"
                 ? sigStyleRaw
                 : "cursive";
+            const recipientMatch = getRecipientByEmail(msg.sender_email);
             const signatureFontFamily = getSignatureFontFamily(sigStyle);
+            const isCurrentUserMessage = msg.sender_email === userEmail;
+            const headerCompanyName =
+              recipientMatch?.company_name || msg.sender_name || "Unknown";
+            const headerPosition = recipientMatch?.position || "";
+            const senderDisplayName = msg.sender_name || "Unknown";
+            const leftCompanyName = recipientMatch?.company_name || "";
+            const leftPosition = recipientMatch?.position || "";
+            const locationRaw = msg.sender_location || "";
+            const locationParts =
+              locationRaw && locationRaw !== "Unknown"
+                ? locationRaw
+                    .split(",")
+                    .map((part) => part.trim())
+                    .filter(Boolean)
+                : [];
+            const city =
+              locationParts.length > 0 ? locationParts[0] : "Unknown";
+            const country =
+              locationParts.length > 1
+                ? locationParts[locationParts.length - 1]
+                : "Unknown";
+            const ipValue = showLocation
+              ? msg.sender_ip || "Unknown"
+              : "Hidden";
+            const cityValue = showLocation ? city : "Hidden";
+            const countryValue = showLocation ? country : "Hidden";
 
             return (
               <div
                 key={msg.id}
-                className={`flex ${
-                  msg.sender_email === userEmail
-                    ? "justify-end"
-                    : "justify-start"
+                className={`flex items-start gap-2 ${
+                  isCurrentUserMessage ? "justify-end" : "justify-start"
                 }`}
               >
+                <div className="relative flex-shrink-0">
+                  <button
+                    type="button"
+                    data-info-button="true"
+                    onClick={() =>
+                      setOpenInfoId((prev) => (prev === msg.id ? null : msg.id))
+                    }
+                    className="h-7 w-7 rounded-full border border-black text-black flex items-center justify-center hover:bg-black hover:text-white transition-colors cursor-pointer"
+                    aria-label="Message info"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                  </button>
+                </div>
                 <div
                   className={`max-w-xs ${
                     isSignature
                       ? "bg-amber-100 text-amber-900 border border-amber-200"
-                      : msg.sender_email === userEmail
-                        ? "bg-blue-600 text-white"
+                      : isRevert
+                        ? "bg-red-100 text-red-900 border border-red-200"
+                      : isCurrentUserMessage
+                        ? "bg-gray-700 text-white"
                         : "bg-gray-200 text-gray-900"
                   } rounded-lg p-3`}
                 >
-                  {showHeader && (
-                    <div className="mb-2 border-b pb-2 border-gray-400">
-                      <p className="text-xs font-bold text-gray-800">
-                        {msg.sender_name || msg.sender_email}
-                      </p>
-                      <p className="text-xs text-gray-700">
-                        {msg.sender_email}
-                      </p>
-                      {showLocation && (
-                        <>
-                          {msg.sender_location &&
-                            msg.sender_location !== "Unknown" && (
-                              <p className="text-xs text-gray-700">
-                                📍 {msg.sender_location}
-                              </p>
-                            )}
-                          {msg.sender_ip && (
-                            <p className="text-xs text-gray-700">
-                              🌐 IP: {msg.sender_ip}
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
+                  <div className="mb-1 flex  justify-between gap-2">
+                    <p className="text-xs font-semibold">
+                      {isCurrentUserMessage
+                        ? msg.sender_name || "Unknown"
+                        : senderDisplayName}
+                    </p>
+                    {(isCurrentUserMessage
+                      ? headerCompanyName || headerPosition
+                      : leftCompanyName || leftPosition) && (
+                      <div className="flex flex-col items-end">
+                        {(isCurrentUserMessage
+                          ? headerCompanyName
+                          : leftCompanyName) && (
+                          <p
+                            className={
+                              isCurrentUserMessage
+                                ? "text-[11px] text-white/80 text-right"
+                                : "text-[11px] text-gray-700 text-right"
+                            }
+                          >
+                            {isCurrentUserMessage
+                              ? headerCompanyName
+                              : leftCompanyName}
+                          </p>
+                        )}
+                        {(isCurrentUserMessage
+                          ? headerPosition
+                          : leftPosition) && (
+                          <p
+                            className={
+                              isCurrentUserMessage
+                                ? "text-[11px] text-white/80 text-right"
+                                : "text-[11px] text-gray-600 text-right"
+                            }
+                          >
+                            {isCurrentUserMessage
+                              ? headerPosition
+                              : leftPosition}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {isSignature ? (
                     <div className="text-sm">
                       <p className="font-semibold">✍️ Signature added</p>
@@ -368,55 +506,47 @@ export default function ChatPanel({
                         <p className="break-words  mt-1">Reason: {sigReason}</p>
                       )}
                     </div>
+                  ) : isRevert ? (
+                    <div className="text-sm">
+                      <p className="font-semibold">Document Reverted</p>
+                      <p className="break-words mt-1">
+                        Reason: {revertReason || "No reason provided"}
+                      </p>
+                    </div>
                   ) : (
                     <p className="text-sm break-words">{msg.message}</p>
                   )}
-                  {msg.attachment_url && (
-                    <a
-                      href={msg.attachment_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs mt-2 underline block"
-                    >
-                      📎 {msg.attachment_name}
-                    </a>
-                  )}
-                  <p className="text-xs mt-1 opacity-75">
-                    {new Date(msg.created_at).toLocaleTimeString()}
+                  <p
+                    className={`text-[11px] mt-2 ${
+                      isSignature
+                        ? "text-amber-800/80"
+                        : isRevert
+                          ? "text-red-800/80"
+                        : isCurrentUserMessage
+                          ? "text-white/70"
+                          : "text-gray-600"
+                    }`}
+                  >
+                    {new Date(msg.created_at).toLocaleString()}
                   </p>
                 </div>
               </div>
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
-
-      {/* Input */}
-      <div className="border-t border-gray-200 p-4 bg-white space-y-3">
-        {isDisabled && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Chat is disabled. Upgrade to continue.
-          </div>
-        )}
-        {selectedFile && (
-          <div className="flex items-center justify-between bg-gray-100 p-2 rounded text-sm">
-            <span>📎 {selectedFile.name}</span>
-            <button
-              onClick={() => setSelectedFile(null)}
-              className="text-red-600 hover:text-red-800"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        <div className="flex gap-1.5 items-end">
+      {/* Input area */}
+      <div className="border-t border-gray-200 p-4">
+        <div className="flex items-center gap-2">
           <div className="relative">
             <button
               onClick={() => setShowMenuDropdown(!showMenuDropdown)}
-              className="py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-300 flex-shrink-0"
               disabled={sending || isDisabled}
-              title="More options"
+              type="button"
+              className={`p-2 rounded hover:bg-gray-100 transition-colors ${
+                isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+              }`}
+              data-menu-button="true"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -434,52 +564,28 @@ export default function ChatPanel({
               </svg>
             </button>
             {showMenuDropdown && (
-              <div className="absolute bottom-12 left-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[200px]">
+              <div
+                data-menu-dropdown="true"
+                className="absolute bottom-12 left-0 bg-white border border-black rounded-xl shadow-xl z-50 min-w-[200px] overflow-hidden"
+              >
                 <button
                   onClick={() => {
                     handleDownloadConversation();
                     setShowMenuDropdown(false);
                   }}
                   disabled={sending || isDisabled}
-                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center gap-2"
+                  className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100 cursor-pointer"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    />
-                  </svg>
                   Download Conversation
                 </button>
+                <div className="border-t border-black/10" />
                 <label
-                  className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-gray-50 transition-colors ${
+                  className={`block w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-100 ${
                     isDisabled
                       ? "opacity-60 cursor-not-allowed text-gray-400"
-                      : "cursor-pointer text-gray-700"
+                      : "cursor-pointer text-gray-900"
                   }`}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
                   Attach File
                   <input
                     type="file"
@@ -506,7 +612,7 @@ export default function ChatPanel({
                 }
               }}
               placeholder="Type a message... (Shift+Enter or Ctrl+Enter to send)"
-              className="w-full px-4 py-3 pr-12 text-sm text-black placeholder-gray-500 bg-white border border-gray-300 focus:outline-none resize-none"
+              className="w-full px-4 py-3 pr-12 text-sm text-black placeholder-gray-500 bg-white border border-gray-300 focus:outline-none resize-none font-serif"
               rows={3}
               disabled={sending || isDisabled}
               style={{
@@ -518,10 +624,10 @@ export default function ChatPanel({
             <button
               onClick={handleSendMessage}
               disabled={sending || !message.trim() || isDisabled}
-              className="absolute bottom-2 right-2 p-2 text-black rounded-full font-medium hover:bg-gray-100 transition-all duration-300 ease-out disabled:opacity-50 flex items-center justify-center"
+              className="absolute bottom-2 right-2 p-2 text-black rounded-full font-medium hover:bg-gray-100 transition-all duration-300 ease-out disabled:opacity-50 flex items-center justify-center cursor-pointer"
             >
               {sending ? (
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full"></div>
               ) : (
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -538,7 +644,7 @@ export default function ChatPanel({
         {canAddSignature && (
           <button
             onClick={() => setShowSignatureModal(true)}
-            className="px-4 py-2 bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-white rounded-full text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+            className="px-4 py-2 bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-white rounded-full text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 cursor-pointer"
           >
             ✍️ Signature
           </button>
@@ -596,7 +702,7 @@ export default function ChatPanel({
                   setSignatureName("");
                   setSignatureStyle("cursive");
                 }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 cursor-pointer"
                 disabled={sending || isDisabled}
               >
                 Cancel
@@ -609,7 +715,7 @@ export default function ChatPanel({
                   !signatureReason.trim() ||
                   isDisabled
                 }
-                className="px-4 py-2 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 disabled:opacity-50"
+                className="px-4 py-2 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 disabled:opacity-50 cursor-pointer"
               >
                 Add signature
               </button>

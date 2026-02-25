@@ -38,20 +38,23 @@ export default async function handler(
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace("Bearer ", "");
 
-    let adminEmail = "hello@bitsoclock.com"; // Default fallback
+    // Always use the verified bitsoclock.com domain for sending emails
+    const adminEmail = "hello@bitsoclock.com";
 
     if (token) {
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser(token);
-        if (user?.email) {
-          const domain = user.email.split("@")[1];
-          adminEmail = `hello@${domain}`;
+        if (!user) {
+          return res
+            .status(401)
+            .json({ success: false, error: "Unauthorized" });
         }
       } catch (err) {
-        // If auth fails, use default
-        console.log("Could not get user email, using default");
+        // If auth fails, return error
+        console.log("Could not authenticate user");
+        return res.status(401).json({ success: false, error: "Unauthorized" });
       }
     }
 

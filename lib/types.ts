@@ -5,7 +5,7 @@ export interface Document {
   title: string;
   content: string;
   template_id?: string;
-  status: "draft" | "sent" | "signed" | "completed" | "uploaded";
+  status: "draft" | "sent" | "signed" | "completed" | "uploaded" | "revert";
   created_at: string;
   updated_at: string;
   file_name?: string;
@@ -27,6 +27,7 @@ export interface Recipient {
   email: string;
   name?: string;
   company_name?: string;
+  position?: string;
   role: "signer" | "viewer";
   status: "pending" | "signed" | "viewed";
   signature_text?: string;

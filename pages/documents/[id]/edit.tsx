@@ -33,6 +33,15 @@ export default function EditDocument() {
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showSavedModal, setShowSavedModal] = useState(false);
+  const [showSendEmailModal, setShowSendEmailModal] = useState(false);
+  const [showSendLinkModal, setShowSendLinkModal] = useState(false);
+  const [showRevertModal, setShowRevertModal] = useState(false);
+  const [revertReason, setRevertReason] = useState("");
+  const [revertingDocument, setRevertingDocument] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -40,8 +49,13 @@ export default function EditDocument() {
     email: "",
     name: "",
     company_name: "",
+    position: "",
     role: "signer" as "signer" | "viewer",
   });
+
+  const openAlertModal = (message: string, title = "Notice") => {
+    setAlertModal({ title, message });
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -119,7 +133,7 @@ export default function EditDocument() {
       setShowSavedModal(true);
       setTimeout(() => setShowSavedModal(false), 2000);
     } catch (err: any) {
-      alert("Error saving document: " + err.message);
+      openAlertModal("Error saving document: " + err.message, "Error");
     } finally {
       setSaving(false);
     }
@@ -127,11 +141,17 @@ export default function EditDocument() {
 
   const handleAddRecipient = async () => {
     if (!hasPremiumAccess(currentUser)) {
-      alert("Your subscription is inactive. Please upgrade to continue.");
+      openAlertModal(
+        "Your subscription is inactive. Please upgrade to continue.",
+        "Subscription inactive",
+      );
       return;
     }
     if (!newRecipient.email.trim() || !newRecipient.name.trim() || !id) {
-      alert("Please fill in all required fields (Email and Name)");
+      openAlertModal(
+        "Please fill in all required fields (Email and Name)",
+        "Missing information",
+      );
       return;
     }
 
@@ -145,6 +165,7 @@ export default function EditDocument() {
             email: newRecipient.email.toLowerCase(),
             name: newRecipient.name,
             company_name: newRecipient.company_name,
+            position: newRecipient.position,
             role: newRecipient.role,
             status: "pending",
           },
@@ -163,11 +184,12 @@ export default function EditDocument() {
         email: "",
         name: "",
         company_name: "",
+        position: "",
         role: "signer",
       });
       setShowModal(false);
     } catch (err: any) {
-      alert("Error adding recipient: " + err.message);
+      openAlertModal("Error adding recipient: " + err.message, "Error");
     } finally {
       setAddingRecipient(false);
     }
@@ -175,7 +197,10 @@ export default function EditDocument() {
 
   const handleRemoveRecipient = async (recipientId: string) => {
     if (!hasPremiumAccess(currentUser)) {
-      alert("Your subscription is inactive. Please upgrade to continue.");
+      openAlertModal(
+        "Your subscription is inactive. Please upgrade to continue.",
+        "Subscription inactive",
+      );
       return;
     }
     if (!confirm("Remove this recipient?")) return;
@@ -185,29 +210,38 @@ export default function EditDocument() {
 
       setRecipients(recipients.filter((r) => r.id !== recipientId));
     } catch (err: any) {
-      alert("Error removing recipient: " + err.message);
+      openAlertModal("Error removing recipient: " + err.message, "Error");
     }
   };
 
   // Send via Email (current behavior)
   const handleSendViaEmail = async () => {
     if (!hasPremiumAccess(currentUser)) {
-      alert("Your subscription is inactive. Please upgrade to continue.");
+      openAlertModal(
+        "Your subscription is inactive. Please upgrade to continue.",
+        "Subscription inactive",
+      );
+      return;
+    }
+    if (!document || (document.status !== "draft" && document.status !== "revert")) {
+      openAlertModal(
+        "Document must be in draft or revert status before sending.",
+        "Invalid status",
+      );
       return;
     }
     if (!id || recipients.length === 0) {
-      alert("Please add at least one recipient before sending");
+      openAlertModal(
+        "Please add at least one recipient before sending",
+        "Recipients required",
+      );
       return;
     }
+    setShowSendEmailModal(true);
+  };
 
-    if (
-      !confirm(
-        "Send this document to all recipients? They will receive signing links via email.",
-      )
-    ) {
-      return;
-    }
-
+  const confirmSendViaEmail = async () => {
+    setShowSendEmailModal(false);
     setSendingDocument(true);
     try {
       // Get auth session for the token
@@ -231,14 +265,14 @@ export default function EditDocument() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(`Error sending emails: ${data.error}`);
+        openAlertModal(`Error sending emails: ${data.error}`, "Error");
         return;
       }
 
-      alert(data.message || "Document sent to recipients!");
+      openAlertModal(data.message || "Document sent to recipients!", "Success");
       router.push("/dashboard");
     } catch (err: any) {
-      alert("Error sending document: " + err.message);
+      openAlertModal("Error sending document: " + err.message, "Error");
     } finally {
       setSendingDocument(false);
     }
@@ -247,22 +281,32 @@ export default function EditDocument() {
   // Send Link: lock document and show modal for link generation
   const handleSendViaLink = async () => {
     if (!hasPremiumAccess(currentUser)) {
-      alert("Your subscription is inactive. Please upgrade to continue.");
+      openAlertModal(
+        "Your subscription is inactive. Please upgrade to continue.",
+        "Subscription inactive",
+      );
+      return;
+    }
+    if (!document || (document.status !== "draft" && document.status !== "revert")) {
+      openAlertModal(
+        "Document must be in draft or revert status before sending.",
+        "Invalid status",
+      );
       return;
     }
     if (!id || recipients.length === 0) {
-      alert("Please add at least one recipient before sending");
+      openAlertModal(
+        "Please add at least one recipient before sending",
+        "Recipients required",
+      );
       setShowSendPopover(false);
       return;
     }
-    if (
-      !confirm(
-        "Once you generate links, the document will be locked and cannot be edited. Continue?",
-      )
-    ) {
-      setShowSendPopover(false);
-      return;
-    }
+    setShowSendLinkModal(true);
+  };
+
+  const confirmSendViaLink = async () => {
+    setShowSendLinkModal(false);
     setLockingDocument(true);
     try {
       await supabase.from("documents").update({ status: "sent" }).eq("id", id);
@@ -280,16 +324,95 @@ export default function EditDocument() {
       setShowLinkModal(true);
       setShowSendPopover(false);
     } catch (err: any) {
-      alert("Error locking document: " + err.message);
+      openAlertModal("Error locking document: " + err.message, "Error");
     } finally {
       setLockingDocument(false);
+    }
+  };
+
+  const handleOpenRevertModal = () => {
+    if (!document || document.status !== "sent") return;
+    setRevertReason("");
+    setShowRevertModal(true);
+  };
+
+  const confirmRevertDocument = async () => {
+    if (!id || !document) return;
+    const isDocumentAdmin = currentUser?.id === document.admin_id;
+    if (!isDocumentAdmin) {
+      openAlertModal("Only the document admin can revert this document.", "Unauthorized");
+      return;
+    }
+
+    const reason = revertReason.trim();
+    if (!reason) {
+      openAlertModal("Please provide a revert reason.", "Reason required");
+      return;
+    }
+
+    setRevertingDocument(true);
+    try {
+      const { error: updateError } = await supabase
+        .from("documents")
+        .update({
+          status: "revert",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      setDocument((prev) => (prev ? { ...prev, status: "revert" } : prev));
+
+      const chatResponse = await fetch("/api/chat-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: String(id),
+          message: `[REVERT] ${reason}`,
+          senderEmail: currentUserEmail,
+          senderName: currentUserName || "Admin",
+        }),
+      });
+
+      if (!chatResponse.ok) {
+        const chatData = await chatResponse.json().catch(() => null);
+        throw new Error(
+          chatData?.error || "Failed to add revert reason in conversation",
+        );
+      }
+
+      await supabase.from("audit_logs").insert([
+        {
+          document_id: String(id),
+          action: "DOCUMENT_REVERTED",
+          actor_email: currentUserEmail || "admin",
+          details: {
+            reason,
+          },
+        },
+      ]);
+
+      setShowRevertModal(false);
+      setRevertReason("");
+      openAlertModal(
+        "Document reverted successfully. You can now edit and resend it.",
+        "Reverted",
+      );
+    } catch (err: any) {
+      openAlertModal("Error reverting document: " + err.message, "Error");
+    } finally {
+      setRevertingDocument(false);
     }
   };
 
   // Generate link for a recipient (after document is locked)
   const handleGenerateLink = (recipient: Recipient) => {
     if (!hasPremiumAccess(currentUser)) {
-      alert("Your subscription is inactive. Please upgrade to continue.");
+      openAlertModal(
+        "Your subscription is inactive. Please upgrade to continue.",
+        "Subscription inactive",
+      );
       return;
     }
     const baseUrl =
@@ -302,7 +425,7 @@ export default function EditDocument() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -312,6 +435,9 @@ export default function EditDocument() {
   }
 
   const isLocked = !hasPremiumAccess(currentUser);
+  const isEditableStatus =
+    document.status === "draft" || document.status === "revert";
+  const isDocumentAdmin = currentUser?.id === document.admin_id;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -345,6 +471,199 @@ export default function EditDocument() {
           </div>
         </div>
       )}
+
+      {/* Send Email Confirmation Modal */}
+      {showSendEmailModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Send Document?
+              </h3>
+              <p className="text-gray-600">
+                Send this document to all {recipients.length} recipient
+                {recipients.length !== 1 ? "s" : ""}? They will receive signing
+                links via email.
+              </p>
+              <div className="flex gap-3 w-full mt-6">
+                <button
+                  onClick={() => setShowSendEmailModal(false)}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSendViaEmail}
+                  disabled={sendingDocument}
+                  className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {sendingDocument ? "Sending..." : "Send"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Link Confirmation Modal */}
+      {showSendLinkModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-amber-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Lock Document?
+              </h3>
+              <p className="text-gray-600">
+                Once you generate links, this document will be locked and
+                cannot be edited. Continue?
+              </p>
+              <div className="flex gap-3 w-full mt-6">
+                <button
+                  onClick={() => setShowSendLinkModal(false)}
+                  disabled={lockingDocument}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSendViaLink}
+                  disabled={lockingDocument}
+                  className="flex-1 px-6 py-3 rounded-xl bg-black text-white font-medium hover:bg-black/90 transition-colors disabled:opacity-50"
+                >
+                  {lockingDocument ? "Locking..." : "Continue"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Revert Confirmation Modal */}
+      {showRevertModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-red-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h14a4 4 0 110 8H9m0 0l4-4m-4 4l4 4"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Revert Document?
+              </h3>
+              <p className="text-gray-600">
+                Revert will unlock this sent document for editing and set
+                its status to <strong>revert</strong>.
+              </p>
+              <div className="w-full text-left">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Revert reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={revertReason}
+                  onChange={(e) => setRevertReason(e.target.value)}
+                  rows={4}
+                  placeholder="Explain why this document is being reverted..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent text-black"
+                  disabled={revertingDocument}
+                />
+              </div>
+              <div className="flex gap-3 w-full mt-2">
+                <button
+                  onClick={() => setShowRevertModal(false)}
+                  disabled={revertingDocument}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRevertDocument}
+                  disabled={revertingDocument || !revertReason.trim()}
+                  className="flex-1 px-6 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {revertingDocument ? "Reverting..." : "Revert"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {alertModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-14 h-14 bg-black/10 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-7 h-7 text-black"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                {alertModal.title}
+              </h3>
+              <p className="text-gray-600">{alertModal.message}</p>
+              <div className="w-full mt-6">
+                <button
+                  onClick={() => setAlertModal(null)}
+                  className="w-full px-6 py-3 rounded-xl bg-black text-white font-medium hover:bg-black/90 transition-colors"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
@@ -372,12 +691,23 @@ export default function EditDocument() {
                 <h1 className="text-2xl font-bold text-gray-900">
                   Edit Document
                 </h1>
-                <p className="text-sm text-gray-600">
-                  Status: {document.status}
-                </p>
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full border border-red-600 text-red-600 text-xs font-semibold uppercase tracking-wide">
+                    {document.status}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="flex gap-2">
+              {document.status === "sent" && isDocumentAdmin && (
+                <button
+                  onClick={handleOpenRevertModal}
+                  disabled={revertingDocument || isLocked}
+                  className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-red-600 hover:bg-red-700 transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {revertingDocument ? "Reverting..." : "Revert"}
+                </button>
+              )}
               <button
                 onClick={handleSaveDocument}
                 disabled={saving || isLocked}
@@ -394,7 +724,7 @@ export default function EditDocument() {
                 >
                   {sendingDocument ? (
                     <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full"></div>
                       Sending...
                     </>
                   ) : (
@@ -402,25 +732,26 @@ export default function EditDocument() {
                   )}
                 </button>
                 {showSendPopover && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-52 bg-white border border-black rounded-xl shadow-xl z-50 overflow-hidden">
                     <button
                       onClick={() => {
                         setShowSendPopover(false);
                         handleSendViaEmail();
                       }}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
+                      className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100"
                       disabled={
                         sendingDocument ||
-                        document.status !== "draft" ||
+                        !isEditableStatus ||
                         isLocked
                       }
                     >
                       Send via Email
                     </button>
+                    <div className="border-t border-black/10" />
                     <button
                       onClick={() => {
                         setShowSendPopover(false);
-                        if (document.status === "draft") {
+                        if (isEditableStatus) {
                           handleSendViaLink();
                         } else {
                           // Pre-populate all links for recipients if not already
@@ -443,10 +774,10 @@ export default function EditDocument() {
                           setShowLinkModal(true);
                         }
                       }}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900"
+                      className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100"
                       disabled={sendingDocument || isLocked}
                     >
-                      {document.status === "draft" ? "Send Link" : "View Links"}
+                      {isEditableStatus ? "Send Link" : "View Links"}
                     </button>
                   </div>
                 )}
@@ -478,7 +809,7 @@ export default function EditDocument() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-              disabled={document.status !== "draft" || isLocked}
+              disabled={!isEditableStatus || isLocked}
             />
           </div>
 
@@ -524,7 +855,7 @@ export default function EditDocument() {
               <RichEditor
                 content={content}
                 onChange={setContent}
-                readOnly={document.status !== "draft" || isLocked}
+                readOnly={!isEditableStatus || isLocked}
               />
             </div>
           )}
@@ -540,11 +871,12 @@ export default function EditDocument() {
               userName={currentUserName}
               isAdmin={true}
               isDisabled={isLocked}
+              recipients={recipients}
             />
           </div>
 
-          {/* Recipients list - Only show when in draft status */}
-          {document.status === "draft" && (
+          {/* Recipients list - Show while document is editable */}
+          {isEditableStatus && (
             <div className="border-t border-gray-200 p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-medium text-gray-900">
@@ -552,7 +884,7 @@ export default function EditDocument() {
                 </h2>
                 <button
                   onClick={() => setShowModal(true)}
-                  disabled={document.status !== "draft" || isLocked}
+                  disabled={!isEditableStatus || isLocked}
                   className="px-6 py-2 rounded-full text-sm font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                 >
                   + Add
@@ -576,11 +908,31 @@ export default function EditDocument() {
                             {recipient.email}
                           </p>
                           <p className="text-xs text-gray-600 mt-1">
+                            Full name:{" "}
+                            <span className="font-medium text-gray-800">
+                              {recipient.name || "Not provided"}
+                            </span>
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Company:{" "}
+                            <span className="font-medium text-gray-800">
+                              {recipient.company_name || "Not provided"}
+                            </span>
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
                             Role:{" "}
                             <span className="font-medium">
                               {recipient.role}
                             </span>
                           </p>
+                          {recipient.position && (
+                            <p className="text-xs text-gray-600">
+                              Position:{" "}
+                              <span className="font-medium">
+                                {recipient.position}
+                              </span>
+                            </p>
+                          )}
                           <p className="text-xs text-gray-600">
                             Status:{" "}
                             <span
@@ -602,7 +954,7 @@ export default function EditDocument() {
                             </p>
                           )}
                         </div>
-                        {document.status === "draft" && (
+                        {isEditableStatus && (
                           <button
                             onClick={() => handleRemoveRecipient(recipient.id)}
                             disabled={isLocked}
@@ -623,8 +975,8 @@ export default function EditDocument() {
 
       {/* Send Link Modal */}
       {showLinkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               {document?.status === "draft"
                 ? "Generate Signing Links"
@@ -650,7 +1002,7 @@ export default function EditDocument() {
                       !generatedLinks[recipient.id] ? (
                         <button
                           onClick={() => handleGenerateLink(recipient)}
-                          className="text-green-600 hover:text-green-800 text-xs border border-green-200 rounded px-2 py-1"
+                          className="bg-black hover:bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                         >
                           Generate Link
                         </button>
@@ -660,9 +1012,9 @@ export default function EditDocument() {
                             navigator.clipboard.writeText(
                               generatedLinks[recipient.id],
                             );
-                            alert("Link copied to clipboard!");
+                            openAlertModal("Link copied to clipboard!", "Copied");
                           }}
-                          className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1"
+                          className="bg-black hover:bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                         >
                           Copy Link
                         </button>
@@ -673,9 +1025,9 @@ export default function EditDocument() {
                           navigator.clipboard.writeText(
                             generatedLinks[recipient.id],
                           );
-                          alert("Link copied to clipboard!");
+                          openAlertModal("Link copied to clipboard!", "Copied");
                         }}
-                        className="text-blue-600 hover:text-blue-800 text-xs border border-blue-200 rounded px-2 py-1"
+                        className="bg-black hover:bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                       >
                         Copy Link
                       </button>
@@ -691,26 +1043,24 @@ export default function EditDocument() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 pt-6">
-              <button
-                onClick={() => setShowLinkModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-md hover:bg-gray-400"
-              >
-                Close
-              </button>
-            </div>
+            <button
+              onClick={() => setShowLinkModal(false)}
+              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
       {showModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 font-serif">
               Add Recipient
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -720,12 +1070,12 @@ export default function EditDocument() {
                     setNewRecipient({ ...newRecipient, email: e.target.value })
                   }
                   placeholder="recipient@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -735,12 +1085,12 @@ export default function EditDocument() {
                     setNewRecipient({ ...newRecipient, name: e.target.value })
                   }
                   placeholder="Full Name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
                   Company Name
                 </label>
                 <input
@@ -753,12 +1103,30 @@ export default function EditDocument() {
                     })
                   }
                   placeholder="Company Name (optional)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                  Position
+                </label>
+                <input
+                  type="text"
+                  value={newRecipient.position}
+                  onChange={(e) =>
+                    setNewRecipient({
+                      ...newRecipient,
+                      position: e.target.value,
+                    })
+                  }
+                  placeholder="Position (optional)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
                   Role
                 </label>
                 <select
@@ -769,10 +1137,14 @@ export default function EditDocument() {
                       role: e.target.value as "signer" | "viewer",
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent bg-white/80"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent bg-white/80 font-serif"
                 >
-                  <option value="signer">Signer</option>
-                  <option value="viewer">Viewer</option>
+                  <option className="font-serif" value="signer">
+                    Signer
+                  </option>
+                  <option className="font-serif" value="viewer">
+                    Viewer
+                  </option>
                 </select>
               </div>
 
@@ -788,7 +1160,7 @@ export default function EditDocument() {
                 >
                   {addingRecipient ? (
                     <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full font-serif"></div>
                       Adding...
                     </>
                   ) : (
@@ -798,7 +1170,7 @@ export default function EditDocument() {
                 <button
                   onClick={() => setShowModal(false)}
                   disabled={addingRecipient}
-                  className="flex-1 px-4 py-2 bg-white text-black border-2 border-black rounded-full font-medium hover:bg-gray-100 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-white text-black border-2 border-black rounded-full font-medium hover:bg-gray-100 disabled:opacity-50 font-serif"
                 >
                   Cancel
                 </button>
