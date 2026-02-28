@@ -1004,12 +1004,13 @@ export default function InvoiceViewPage() {
 
     setSignatureInput(existingSignature);
     setSignatureStyleInput(existingStyle);
+    const signerEmail = isSender
+      ? invoice?.sender_signer_email || "-"
+      : invoice?.receiver_signer_email || "-";
     setSignatureModal({
       milestoneIndex,
       role,
-      email: isSender
-        ? invoice.sender_signer_email || "-"
-        : invoice.receiver_signer_email || "-",
+      email: signerEmail,
       signatureText: existingSignature,
       signatureStyle: existingStyle,
       milestoneItem: entry.item || "Milestone",

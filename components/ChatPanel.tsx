@@ -459,9 +459,9 @@ export default function ChatPanel({
                       : isRevert
                         ? "bg-red-100 text-red-900 border border-red-200"
                       : isInvoiceDetach
-                        ? "bg-red-100 text-red-900 border border-red-200"
+                        ? "bg-black text-white border border-black"
                       : isInvoiceAttach
-                        ? "bg-blue-100 text-blue-900 border border-blue-200"
+                        ? "bg-black text-white border border-black"
                       : isCurrentUserMessage
                         ? "bg-gray-700 text-white"
                         : "bg-gray-200 text-gray-900"
@@ -562,9 +562,9 @@ export default function ChatPanel({
                         : isRevert
                           ? "text-red-800/80"
                         : isInvoiceDetach
-                          ? "text-red-800/80"
+                          ? "text-white/70"
                         : isInvoiceAttach
-                          ? "text-blue-800/80"
+                          ? "text-white/70"
                         : isCurrentUserMessage
                           ? "text-white/70"
                           : "text-gray-600"
