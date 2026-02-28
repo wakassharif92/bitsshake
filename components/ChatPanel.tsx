@@ -360,12 +360,30 @@ export default function ChatPanel({
           messages.map((msg) => {
             const isSignature = msg.message?.startsWith("[SIGNATURE]");
             const isRevert = msg.message?.startsWith("[REVERT]");
+            const isInvoiceAttach = msg.message?.startsWith("[INVOICE_ATTACH]");
+            const isInvoiceDetach = msg.message?.startsWith("[INVOICE_DETACH]");
             const signatureBody = isSignature
               ? msg.message.replace("[SIGNATURE]", "").trim()
               : "";
             const revertReason = isRevert
               ? msg.message.replace("[REVERT]", "").trim()
               : "";
+            const invoiceAttachBody = isInvoiceAttach
+              ? msg.message.replace("[INVOICE_ATTACH]", "").trim()
+              : "";
+            const invoiceDetachBody = isInvoiceDetach
+              ? msg.message.replace("[INVOICE_DETACH]", "").trim()
+              : "";
+            const [invoiceDetachNumberRaw, invoiceDetachReasonRaw] =
+              invoiceDetachBody
+                ? invoiceDetachBody.split("||").map((part) => part.trim())
+                : ["", ""];
+            const invoiceDetachNumber = invoiceDetachNumberRaw || "Unknown";
+            const invoiceDetachReason =
+              invoiceDetachReasonRaw?.toLowerCase() === "no reason"
+                ? "No Reason"
+                : invoiceDetachReasonRaw || "No Reason";
+            const invoiceAttachNumber = invoiceAttachBody || "Unknown";
             const [sigName, sigReason, sigStyleRaw] = signatureBody
               ? signatureBody.split("||").map((part) => part.trim())
               : ["", "", ""];
@@ -440,6 +458,10 @@ export default function ChatPanel({
                       ? "bg-amber-100 text-amber-900 border border-amber-200"
                       : isRevert
                         ? "bg-red-100 text-red-900 border border-red-200"
+                      : isInvoiceDetach
+                        ? "bg-red-100 text-red-900 border border-red-200"
+                      : isInvoiceAttach
+                        ? "bg-blue-100 text-blue-900 border border-blue-200"
                       : isCurrentUserMessage
                         ? "bg-gray-700 text-white"
                         : "bg-gray-200 text-gray-900"
@@ -513,6 +535,23 @@ export default function ChatPanel({
                         Reason: {revertReason || "No reason provided"}
                       </p>
                     </div>
+                  ) : isInvoiceDetach ? (
+                    <div className="text-sm space-y-1">
+                      <p className="font-semibold">
+                        Invoice Number: {invoiceDetachNumber}
+                      </p>
+                      <p className="font-semibold">Invoice Detach</p>
+                      <p className="break-words">
+                        Reason: {invoiceDetachReason}
+                      </p>
+                    </div>
+                  ) : isInvoiceAttach ? (
+                    <div className="text-sm space-y-1">
+                      <p className="font-semibold">
+                        Invoice Number: {invoiceAttachNumber}
+                      </p>
+                      <p className="font-semibold">Invoice Attach</p>
+                    </div>
                   ) : (
                     <p className="text-sm break-words">{msg.message}</p>
                   )}
@@ -522,6 +561,10 @@ export default function ChatPanel({
                         ? "text-amber-800/80"
                         : isRevert
                           ? "text-red-800/80"
+                        : isInvoiceDetach
+                          ? "text-red-800/80"
+                        : isInvoiceAttach
+                          ? "text-blue-800/80"
                         : isCurrentUserMessage
                           ? "text-white/70"
                           : "text-gray-600"

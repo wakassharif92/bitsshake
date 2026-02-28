@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS documents
+  ADD COLUMN IF NOT EXISTS invoice_id uuid REFERENCES invoices(id) ON DELETE SET NULL;

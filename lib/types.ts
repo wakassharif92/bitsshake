@@ -2,6 +2,7 @@
 export interface Document {
   id: string;
   admin_id: string;
+  invoice_id?: string | null;
   title: string;
   content: string;
   template_id?: string;
@@ -19,6 +20,48 @@ export interface Template {
   name: string;
   content: string;
   created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  admin_id: string;
+  invoice_number: string;
+  client_name: string;
+  client_email?: string;
+  sender_signer_email?: string | null;
+  receiver_signer_email?: string | null;
+  description?: string;
+  invoice_type: "one_time" | "milestone";
+  milestones?: Array<{
+    item: string;
+    amount: number;
+    sender_signature_text?: string;
+    receiver_signature_text?: string;
+    sender_signature_style?: string;
+    receiver_signature_style?: string;
+    sender_signed_by_ip?: string;
+    sender_signed_by_city?: string;
+    sender_signed_by_country?: string;
+    sender_signed_at?: string;
+    receiver_signed_by_ip?: string;
+    receiver_signed_by_city?: string;
+    receiver_signed_by_country?: string;
+    receiver_signed_at?: string;
+  }>;
+  total_amount?: number;
+  amount: number;
+  currency: string;
+  due_date?: string | null;
+  status:
+    | "in_progress"
+    | "draft"
+    | "sent"
+    | "received"
+    | "completed"
+    | "paid"
+    | "overdue";
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Recipient {

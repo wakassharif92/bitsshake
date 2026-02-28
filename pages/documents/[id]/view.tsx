@@ -1,9 +1,16 @@
 // (Removed duplicate ViewDocument function. The main implementation follows below.)
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Document, Recipient, AuditLog, ChatMessage, User } from "@/lib/types";
+import {
+  Document,
+  Recipient,
+  AuditLog,
+  ChatMessage,
+  User,
+  Invoice,
+} from "@/lib/types";
 import { hasPremiumAccess } from "@/lib/subscription";
 import ChatPanel from "@/components/ChatPanel";
 import Toast, { ToastMessage } from "@/components/Toast";
@@ -20,9 +27,19 @@ export default function ViewDocument() {
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [revertReason, setRevertReason] = useState("");
   const [revertingDocument, setRevertingDocument] = useState(false);
+  const [showAttachInvoiceModal, setShowAttachInvoiceModal] = useState(false);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [attachingInvoice, setAttachingInvoice] = useState(false);
+  const [attachedInvoiceIds, setAttachedInvoiceIds] = useState<string[]>([]);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
+  const [showDetachInvoiceModal, setShowDetachInvoiceModal] = useState(false);
+  const [detachingInvoice, setDetachingInvoice] = useState(false);
+  const [detachInvoiceReason, setDetachInvoiceReason] = useState("");
+  const [invoiceToDetach, setInvoiceToDetach] = useState<Invoice | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const sendPopoverRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "conversation" | "logs" | "recipients"
+    "conversation" | "logs" | "recipients" | "invoice"
   >("conversation");
   const [toast, setToast] = useState<ToastMessage | null>(null);
   // Send via Email (same as edit page)
@@ -140,6 +157,137 @@ export default function ViewDocument() {
       setRevertingDocument(false);
     }
   };
+
+  const openAttachInvoiceModal = async () => {
+    if (!document?.admin_id) return;
+    if (!hasPremiumAccess(currentUserData) && !isPublicView) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
+    setSelectedInvoiceIds([]);
+    await loadInvoices(document.admin_id);
+    setShowAttachInvoiceModal(true);
+  };
+
+  const handleAttachInvoice = async () => {
+    if (!id || !document) return;
+    if (!hasPremiumAccess(currentUserData) && !isPublicView) {
+      alert("Your subscription is inactive. Please upgrade to continue.");
+      return;
+    }
+    if (selectedInvoiceIds.length === 0) {
+      alert("Please select at least one invoice.");
+      return;
+    }
+
+    setAttachingInvoice(true);
+    try {
+      const payload = selectedInvoiceIds.map((invoiceId) => ({
+        document_id: String(id),
+        invoice_id: invoiceId,
+      }));
+
+      const { error } = await supabase
+        .from("document_invoices")
+        .upsert(payload, { onConflict: "document_id,invoice_id" });
+
+      if (error) throw error;
+      await loadAttachedInvoices(String(id));
+      setShowAttachInvoiceModal(false);
+      setSelectedInvoiceIds([]);
+
+      const attachedNow = invoices.filter((inv) =>
+        selectedInvoiceIds.includes(inv.id),
+      );
+      const message = `[INVOICE_ATTACH] ${attachedNow
+        .map((inv) => inv.invoice_number || inv.client_name || inv.id)
+        .join(", ")}`;
+      await fetch("/api/chat-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: String(id),
+          message,
+          senderEmail: currentUserEmail,
+          senderName: currentUserName || "Admin",
+        }),
+      });
+      setToast({
+        id: String(Date.now()),
+        message: "Invoice(s) attached successfully.",
+        type: "success",
+      });
+    } catch (err: any) {
+      const message = String(err?.message || "Unknown error");
+      if (
+        message.includes(
+          "Could not find the table 'public.document_invoices' in the schema cache",
+        )
+      ) {
+        alert(
+          "Database is missing document_invoices table in API cache.\n\nRun this SQL in Supabase SQL Editor:\nCREATE TABLE IF NOT EXISTS document_invoices (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  document_id uuid NOT NULL REFERENCES documents(id) ON DELETE CASCADE,\n  invoice_id uuid NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,\n  created_at timestamp DEFAULT now(),\n  UNIQUE(document_id, invoice_id)\n);\nNOTIFY pgrst, 'reload schema';\n\nThen try attaching again.",
+        );
+      } else {
+        alert("Error attaching invoice: " + message);
+      }
+    } finally {
+      setAttachingInvoice(false);
+    }
+  };
+
+  const handleDetachInvoice = (invoiceId: string) => {
+    const target = attachedInvoices.find((item) => item.id === invoiceId) || null;
+    setInvoiceToDetach(target);
+    setDetachInvoiceReason("");
+    setShowDetachInvoiceModal(true);
+  };
+
+  const confirmDetachInvoice = async () => {
+    if (!id || !invoiceToDetach) return;
+    const reason = detachInvoiceReason.trim();
+    if (!reason) {
+      alert("Please provide a detach reason.");
+      return;
+    }
+
+    setDetachingInvoice(true);
+    try {
+      const { error } = await supabase
+        .from("document_invoices")
+        .delete()
+        .eq("document_id", String(id))
+        .eq("invoice_id", invoiceToDetach.id);
+
+      if (error) throw error;
+      setAttachedInvoiceIds((prev) =>
+        prev.filter((item) => item !== invoiceToDetach.id),
+      );
+
+      await fetch("/api/chat-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: String(id),
+          message: `[INVOICE_DETACH] ${invoiceToDetach.invoice_number || invoiceToDetach.client_name || invoiceToDetach.id} || ${reason}`,
+          senderEmail: currentUserEmail,
+          senderName: currentUserName || "Admin",
+        }),
+      });
+
+      setShowDetachInvoiceModal(false);
+      setInvoiceToDetach(null);
+      setDetachInvoiceReason("");
+      setToast({
+        id: String(Date.now()),
+        message: "Invoice detached successfully.",
+        type: "success",
+      });
+    } catch (err: any) {
+      alert("Error detaching invoice: " + err.message);
+    } finally {
+      setDetachingInvoice(false);
+    }
+  };
   const router = useRouter();
   const { id, email } = router.query;
   const [document, setDocument] = useState<Document | null>(null);
@@ -150,6 +298,41 @@ export default function ViewDocument() {
   const [showLocation, setShowLocation] = useState(true);
   const [chatSignatures, setChatSignatures] = useState<ChatMessage[]>([]);
   const hasLoggedOpenRef = useRef(false);
+
+  const loadInvoices = useCallback(async (adminId: string) => {
+    setLoadingInvoices(true);
+    try {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*")
+        .eq("admin_id", adminId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setInvoices((data || []) as Invoice[]);
+    } catch (err: any) {
+      alert("Error loading invoices: " + err.message);
+      setInvoices([]);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  }, []);
+
+  const loadAttachedInvoices = useCallback(async (documentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("document_invoices")
+        .select("invoice_id")
+        .eq("document_id", documentId);
+      if (error) throw error;
+      const ids = ((data || []) as Array<{ invoice_id: string }>)
+        .map((row) => row.invoice_id)
+        .filter(Boolean);
+      setAttachedInvoiceIds(ids);
+    } catch (err: any) {
+      console.error("Error loading attached invoices:", err);
+      setAttachedInvoiceIds([]);
+    }
+  }, []);
 
   const fetchConfig = async () => {
     try {
@@ -300,6 +483,7 @@ export default function ViewDocument() {
         const data = await response.json();
         setDocument(data.document || null);
         setRecipients(data.recipients || []);
+        await loadAttachedInvoices(String(id));
 
         const currentRecipient = (data.recipients || []).find(
           (r: Recipient) => r.email === emailFromLink,
@@ -346,6 +530,10 @@ export default function ViewDocument() {
         }
 
         setDocument(docData);
+        await loadAttachedInvoices(String(id));
+        if (userId === docData.admin_id) {
+          await loadInvoices(docData.admin_id);
+        }
 
         // Fetch recipients
         const { data: recipientsData } = await supabase
@@ -371,7 +559,7 @@ export default function ViewDocument() {
     };
 
     fetchData();
-  }, [id, email, router]);
+  }, [email, id, loadAttachedInvoices, loadInvoices, router]);
 
   const getSignatureFontFamily = (style: string) => {
     if (style === "script") {
@@ -469,6 +657,30 @@ export default function ViewDocument() {
       r.role === "signer",
   );
   const canRevertDocument = document.status === "sent" && (isDocumentAdmin || isCurrentSigner);
+  const canManageInvoices = isDocumentAdmin;
+  const attachedInvoices = attachedInvoiceIds
+    .map((invoiceId) => invoices.find((inv) => inv.id === invoiceId))
+    .filter(Boolean) as Invoice[];
+
+  const getInvoiceRemainingAmount = (invoice: Invoice) => {
+    const totalAmount = Number(invoice.total_amount ?? invoice.amount ?? 0);
+    const milestones = Array.isArray(invoice.milestones)
+      ? (invoice.milestones as Array<{
+          amount?: number | string;
+          sender_signature_text?: string;
+          receiver_signature_text?: string;
+        }>)
+      : [];
+    const completedAmount = milestones.reduce((sum, milestone) => {
+      const isFullySigned =
+        !!(milestone.sender_signature_text || "").trim() &&
+        !!(milestone.receiver_signature_text || "").trim();
+      if (!isFullySigned) return sum;
+      const amount = Number(milestone.amount || 0);
+      return sum + (Number.isFinite(amount) ? amount : 0);
+    }, 0);
+    return Math.max(totalAmount - completedAmount, 0);
+  };
 
   const formatTimeAgo = (dateString: string) => {
     const diffMs = Date.now() - new Date(dateString).getTime();
@@ -694,6 +906,13 @@ export default function ViewDocument() {
               {/* Show Send to Recipients button for admin only */}
               {isDocumentAdmin && (
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={openAttachInvoiceModal}
+                    disabled={attachingInvoice || !hasAccess}
+                    className="font-serif px-4 py-2 bg-white text-black border border-black rounded-4xl hover:bg-gray-50 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:border-gray-400 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {attachingInvoice ? "Attaching..." : "Attach Invoice"}
+                  </button>
                   <div className="relative" ref={sendPopoverRef}>
                     <button
                       onClick={() => setShowSendPopover((v) => !v)}
@@ -866,7 +1085,7 @@ export default function ViewDocument() {
           <div className="space-y-6">
             {/* Tabs */}
             <div className="bg-white shadow rounded-2xl">
-              <div className="rounded-2xl flex gap-2 p-4 border-b border-gray-200">
+              <div className="rounded-2xl flex flex-wrap gap-2 p-4 border-b border-gray-200">
                 <button
                   onClick={() => setActiveTab("conversation")}
                   className={`px-4 py-2 rounded-4xl font-medium transition-colors text-[14px] font-serif cursor-pointer ${
@@ -896,6 +1115,16 @@ export default function ViewDocument() {
                   }`}
                 >
                   Recipients
+                </button>
+                <button
+                  onClick={() => setActiveTab("invoice")}
+                  className={`px-4 py-2 rounded-4xl font-medium transition-colors font-serif text-[14px] cursor-pointer ${
+                    activeTab === "invoice"
+                      ? "bg-black text-white"
+                      : "bg-transparent text-black border border-black hover:bg-gray-50"
+                  }`}
+                >
+                  Invoice
                 </button>
               </div>
 
@@ -1038,6 +1267,104 @@ export default function ViewDocument() {
                   </div>
                 )}
 
+                {activeTab === "invoice" && (
+                  <div>
+                    {attachedInvoices.length > 0 ? (
+                      <div className="space-y-3">
+                        {attachedInvoices.map((attachedInvoice) => {
+                          const total = Number(
+                            attachedInvoice.total_amount ??
+                              attachedInvoice.amount ??
+                              0,
+                          );
+                          const remaining =
+                            getInvoiceRemainingAmount(attachedInvoice);
+                          return (
+                            <div
+                              key={attachedInvoice.id}
+                              className="border border-gray-200 rounded-lg p-4"
+                            >
+                              <div className="flex items-start justify-between mb-3 gap-2">
+                                <Link href={`/invoices/${attachedInvoice.id}`}>
+                                  <p className="font-medium text-sm text-gray-900 hover:underline cursor-pointer">
+                                    {attachedInvoice.invoice_number ||
+                                      "Attached Invoice"}
+                                  </p>
+                                </Link>
+                                {canManageInvoices && (
+                                  <button
+                                    onClick={() =>
+                                      handleDetachInvoice(attachedInvoice.id)
+                                    }
+                                    disabled={attachingInvoice || detachingInvoice}
+                                    className="text-xs px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                                  >
+                                    Detach
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium capitalize">
+                                  {String(attachedInvoice.status || "").replace(
+                                    /_/g,
+                                    " ",
+                                  )}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                Amount:{" "}
+                                <span className="font-medium text-gray-800">
+                                  {attachedInvoice.currency} {total.toFixed(2)}
+                                </span>
+                              </p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Remaining Amount:{" "}
+                                <span className="font-medium text-gray-800">
+                                  {attachedInvoice.currency}{" "}
+                                  {remaining.toFixed(2)}
+                                </span>
+                              </p>
+                              {attachedInvoice.due_date && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  Due Date:{" "}
+                                  <span className="font-medium text-gray-800">
+                                    {new Date(
+                                      attachedInvoice.due_date,
+                                    ).toLocaleDateString()}
+                                  </span>
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-600 mt-1">
+                                Created:{" "}
+                                <span className="font-medium text-gray-800">
+                                  {new Date(
+                                    attachedInvoice.created_at,
+                                  ).toLocaleDateString()}
+                                </span>
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-500 mb-3">
+                          No invoice attached yet.
+                        </p>
+                        {canManageInvoices && (
+                          <button
+                            onClick={openAttachInvoiceModal}
+                            disabled={attachingInvoice || !hasAccess}
+                            className="px-4 py-2 rounded-full text-sm font-medium text-white bg-black hover:bg-gray-800 disabled:opacity-50"
+                          >
+                            Attach Invoice
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Conversation Tab */}
                 {activeTab === "conversation" && (
                   <div style={{ height: "500px" }}>
@@ -1130,6 +1457,140 @@ export default function ViewDocument() {
           </div>
         </div>
       </main>
+
+      {/* Attach Invoice Modal */}
+      {showAttachInvoiceModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Attach Invoice
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select one or more existing invoices to attach with this document.
+            </p>
+            <div className="space-y-3 max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-3">
+              {loadingInvoices ? (
+                <p className="text-sm text-gray-500">Loading invoices...</p>
+              ) : invoices.length === 0 ? (
+                <p className="text-sm text-gray-500">No invoices found.</p>
+              ) : (
+                invoices.map((invoice) => (
+                  <label
+                    key={invoice.id}
+                    className="flex items-center justify-between border border-gray-200 rounded-lg p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {invoice.invoice_number || "Invoice"}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {invoice.client_name} - {invoice.currency}{" "}
+                        {Number(
+                          invoice.total_amount ?? invoice.amount ?? 0,
+                        ).toFixed(2)}
+                      </p>
+                      {attachedInvoiceIds.includes(invoice.id) && (
+                        <p className="text-xs text-green-700 mt-1">
+                          Already attached
+                        </p>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      disabled={attachedInvoiceIds.includes(invoice.id)}
+                      checked={selectedInvoiceIds.includes(invoice.id)}
+                      onChange={(e) =>
+                        setSelectedInvoiceIds((prev) =>
+                          e.target.checked
+                            ? [...prev, invoice.id]
+                            : prev.filter((item) => item !== invoice.id),
+                        )
+                      }
+                    />
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setShowAttachInvoiceModal(false)}
+                disabled={attachingInvoice}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAttachInvoice}
+                disabled={attachingInvoice || selectedInvoiceIds.length === 0}
+                className="flex-1 px-4 py-2 bg-black text-white rounded-full hover:bg-gray-800 disabled:opacity-50"
+              >
+                {attachingInvoice ? "Saving..." : "Attach"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detach Invoice Confirmation Modal */}
+      {showDetachInvoiceModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-red-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h14a4 4 0 110 8H9m0 0l4-4m-4 4l4 4"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Detach Invoice?
+              </h3>
+              <p className="text-gray-600">
+                This will remove invoice from this document and add a
+                conversation entry.
+              </p>
+              <div className="w-full text-left">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Detach reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={detachInvoiceReason}
+                  onChange={(e) => setDetachInvoiceReason(e.target.value)}
+                  rows={4}
+                  placeholder="Explain why this invoice is being detached..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent text-black"
+                  disabled={detachingInvoice}
+                />
+              </div>
+              <div className="flex gap-3 w-full mt-2">
+                <button
+                  onClick={() => setShowDetachInvoiceModal(false)}
+                  disabled={detachingInvoice}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDetachInvoice}
+                  disabled={detachingInvoice || !detachInvoiceReason.trim()}
+                  className="flex-1 px-6 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {detachingInvoice ? "Detaching..." : "Detach"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Link Modal */}
       {showLinkModal && (

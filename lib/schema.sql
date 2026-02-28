@@ -27,10 +27,42 @@ CREATE TABLE IF NOT EXISTS templates (
   created_at timestamp DEFAULT now()
 );
 
+-- Create invoices table
+CREATE TABLE IF NOT EXISTS invoices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invoice_number varchar(100) NOT NULL,
+  client_name varchar(255) NOT NULL,
+  client_email varchar(255),
+  sender_signer_email varchar(255),
+  receiver_signer_email varchar(255),
+  description text,
+  invoice_type varchar(20) NOT NULL DEFAULT 'one_time',
+  milestones jsonb NOT NULL DEFAULT '[]'::jsonb,
+  total_amount numeric(12,2) NOT NULL DEFAULT 0,
+  amount numeric(12,2) NOT NULL DEFAULT 0,
+  currency varchar(10) NOT NULL DEFAULT 'USD',
+  due_date date,
+  status varchar(50) NOT NULL DEFAULT 'in_progress',
+  created_at timestamp DEFAULT now(),
+  updated_at timestamp DEFAULT now()
+);
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS sender_signer_email varchar(255),
+  ADD COLUMN IF NOT EXISTS receiver_signer_email varchar(255),
+  ADD COLUMN IF NOT EXISTS invoice_type varchar(20) NOT NULL DEFAULT 'one_time',
+  ADD COLUMN IF NOT EXISTS milestones jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS total_amount numeric(12,2) NOT NULL DEFAULT 0;
+
+ALTER TABLE invoices
+  ALTER COLUMN due_date DROP NOT NULL;
+
 -- Create documents table
 CREATE TABLE IF NOT EXISTS documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   admin_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invoice_id uuid REFERENCES invoices(id) ON DELETE SET NULL,
   title varchar(255) NOT NULL,
   content text,
   template_id uuid REFERENCES templates(id),
@@ -38,6 +70,9 @@ CREATE TABLE IF NOT EXISTS documents (
   created_at timestamp DEFAULT now(),
   updated_at timestamp DEFAULT now()
 );
+
+ALTER TABLE documents
+  ADD COLUMN IF NOT EXISTS invoice_id uuid REFERENCES invoices(id) ON DELETE SET NULL;
 
 -- Create recipients table
 CREATE TABLE IF NOT EXISTS recipients (
@@ -70,20 +105,34 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   details jsonb
 );
 
+-- Create document_invoices table (many-to-many)
+CREATE TABLE IF NOT EXISTS document_invoices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id uuid NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  invoice_id uuid NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  created_at timestamp DEFAULT now(),
+  UNIQUE(document_id, invoice_id)
+);
+
 -- Create indexes for performance
 CREATE INDEX idx_templates_admin_id ON templates(admin_id);
+CREATE INDEX idx_invoices_admin_id ON invoices(admin_id);
 CREATE INDEX idx_documents_admin_id ON documents(admin_id);
 CREATE INDEX idx_documents_status ON documents(status);
 CREATE INDEX idx_recipients_document_id ON recipients(document_id);
 CREATE INDEX idx_recipients_email ON recipients(email);
 CREATE INDEX idx_audit_logs_document_id ON audit_logs(document_id);
+CREATE INDEX idx_document_invoices_document_id ON document_invoices(document_id);
+CREATE INDEX idx_document_invoices_invoice_id ON document_invoices(invoice_id);
 
 -- Enable RLS
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document_invoices ENABLE ROW LEVEL SECURITY;
 
 -- Policies for users table
 CREATE POLICY "Users can view their own data" ON users
@@ -106,6 +155,19 @@ CREATE POLICY "Users can update their own templates" ON templates
   FOR UPDATE USING (admin_id = auth.uid());
 
 CREATE POLICY "Users can delete their own templates" ON templates
+  FOR DELETE USING (admin_id = auth.uid());
+
+-- Policies for invoices table
+CREATE POLICY "Users can view their own invoices" ON invoices
+  FOR SELECT USING (admin_id = auth.uid());
+
+CREATE POLICY "Users can insert invoices" ON invoices
+  FOR INSERT WITH CHECK (admin_id = auth.uid());
+
+CREATE POLICY "Users can update their own invoices" ON invoices
+  FOR UPDATE USING (admin_id = auth.uid());
+
+CREATE POLICY "Users can delete their own invoices" ON invoices
   FOR DELETE USING (admin_id = auth.uid());
 
 -- Policies for documents table
@@ -171,6 +233,34 @@ CREATE POLICY "Users can view audit logs of their documents" ON audit_logs
 
 CREATE POLICY "Admins can insert audit logs" ON audit_logs
   FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM documents
+      WHERE documents.id = document_id
+      AND documents.admin_id = auth.uid()
+    )
+  );
+
+-- Policies for document_invoices table
+CREATE POLICY "Users can view document invoices for their documents" ON document_invoices
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM documents
+      WHERE documents.id = document_id
+      AND documents.admin_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert document invoices for their documents" ON document_invoices
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM documents
+      WHERE documents.id = document_id
+      AND documents.admin_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete document invoices for their documents" ON document_invoices
+  FOR DELETE USING (
     EXISTS (
       SELECT 1 FROM documents
       WHERE documents.id = document_id
