@@ -70,12 +70,45 @@ export default async function handler(
       m.message?.startsWith("[SIGNATURE]"),
     );
 
+    // Fetch attached invoices
+    const { data: attachedRows, error: attachedRowsError } = await supabaseAdmin
+      .from("document_invoices")
+      .select("invoice_id")
+      .eq("document_id", documentId);
+
+    if (attachedRowsError) {
+      return res
+        .status(500)
+        .json({ success: false, error: "Failed to fetch attached invoices" });
+    }
+
+    const invoiceIds = (attachedRows || [])
+      .map((row: any) => row.invoice_id)
+      .filter(Boolean);
+
+    let attachedInvoices: any[] = [];
+    if (invoiceIds.length > 0) {
+      const { data: invoicesData, error: invoicesError } = await supabaseAdmin
+        .from("invoices")
+        .select("*")
+        .in("id", invoiceIds);
+
+      if (invoicesError) {
+        return res
+          .status(500)
+          .json({ success: false, error: "Failed to fetch invoice details" });
+      }
+
+      attachedInvoices = invoicesData || [];
+    }
+
     // Generate PDF
     const pdf = await generateDocumentPDF(
       document,
       recipients,
       auditLogs,
       chatSignatures,
+      attachedInvoices,
     );
     const pdfBytes = pdf.output("arraybuffer");
 
