@@ -382,8 +382,31 @@ export default function Dashboard() {
     );
   }
 
+  const draftCount = documents.filter((doc) => doc.status === "draft").length;
+  const sentCount = documents.filter((doc) => doc.status === "sent").length;
+  const completedCount = documents.filter(
+    (doc) => doc.status === "completed" || doc.status === "signed",
+  ).length;
+  const recentDocument = documents[0] || null;
+
+  const getStatusClasses = (status: string) => {
+    if (status === "draft") {
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    }
+    if (status === "sent") {
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    }
+    if (status === "completed" || status === "signed") {
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    }
+    if (status === "revert") {
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    }
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-slate-900">
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
@@ -434,160 +457,302 @@ export default function Dashboard() {
       )}
 
       {/* Header */}
-      <header className=" ">
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex justify-center">
-          <nav className="hidden lg:flex items-center gap-x-10 font-inria rounded-full px-8 py-4 bg-gradient-to-b from-[#ffffff] to-[#d9d9d9] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),_0_8px_20px_rgba(0,0,0,0.15)] border border-white/80">
+      <header className="border-b border-slate-200/70 bg-white/75 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="hidden lg:flex items-center justify-between rounded-[32px] border border-white/80 bg-gradient-to-b from-white via-[#f8fafc] to-[#e9edf4] px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),_0_20px_50px_rgba(15,23,42,0.12)]">
             <Link
               href="/dashboard#documents"
-              className="flex items-center gap-3 pr-2 group"
+              className="flex min-w-[230px] items-center gap-4"
             >
-              <Image
-                src="/bitsshake-logo2.png"
-                alt="BitsShake Logo"
-                width={50}
-                height={50}
-                className="object-contain"
-              />
-              {/* <span className="text-gray-500">•</span> */}
-              {/* <span className="text-sm font-medium text-gray-300">
-              {user?.company_name || "Company"}
-              </span> */}
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <Image
+                  src="/bitsshake-logo2.png"
+                  alt="BitsShake Logo"
+                  width={42}
+                  height={42}
+                  className="object-contain"
+                />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Workspace
+                </p>
+                <p className="mt-1 text-base font-semibold text-slate-900">
+                  {user?.company_name || "BitsShake"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Document operations hub
+                </p>
+              </div>
             </Link>
-            {navLinks.map((link) => {
-              const isActive = router.asPath === link.path;
-              return (
-                <Link
-                  key={link.name}
-                  href={link.path}
-                  className="flex items-center group"
-                >
-                  <span
-                    className={`mr-1.5 transition-all duration-300 ${
-                      isActive
-                        ? "text-gray-900"
-                        : "text-gray-600 group-hover:text-gray-900"
-                    }`}
-                  >
-                    {link.icon}
-                  </span>
-                  <span
-                    className={`text-sm font-medium tracking-wide transition-all duration-300 ${
-                      isActive
-                        ? "text-gray-900"
-                        : "text-gray-600 group-hover:text-gray-900"
-                    }`}
-                  >
-                    {link.name}
-                  </span>
-                </Link>
-              );
-            })}
-            <button
-              onClick={handleSignOut}
-              disabled={signOutLoading}
-              className="flex items-center group"
-              type="button"
-            >
-              <span
-                className={`text-sm font-medium tracking-wide transition-all duration-300 ${
-                  signOutLoading
-                    ? "text-gray-400"
-                    : "text-gray-600 group-hover:text-gray-900"
-                }`}
+
+            <nav className="mx-8 flex flex-1 items-center justify-center">
+              <div className="flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 p-2 shadow-sm">
+                {navLinks.map((link) => {
+                  const isActive = router.asPath === link.path;
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.path}
+                      className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? "bg-slate-950 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <span
+                        className={`transition-colors ${
+                          isActive ? "text-white" : "text-slate-500"
+                        }`}
+                      >
+                        {link.icon}
+                      </span>
+                      <span>{link.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </nav>
+
+            <div className="flex min-w-[190px] items-center justify-end gap-3">
+              <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm xl:block">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Account
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-900">
+                  {user?.full_name || sessionUser?.full_name || "Admin"}
+                </p>
+              </div>
+              <button
+                onClick={handleSignOut}
+                disabled={signOutLoading}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:text-slate-400"
+                type="button"
               >
                 {signOutLoading ? "Signing out..." : "Sign out"}
-              </span>
-            </button>
-          </nav>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <section className="mb-8 overflow-hidden rounded-[32px] border border-white/70 bg-white/80 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+          <div className="bg-[linear-gradient(135deg,#f8fafc,white_50%,#eef2ff)] px-8 py-8 sm:px-10">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)] lg:items-start">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Dashboard
+                  </span>
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    {user?.company_name || "Workspace"}
+                  </span>
+                </div>
+                <h1 className="mt-4 text-4xl font-semibold tracking-[-0.03em] text-slate-950">
+                  Your document workspace
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Create, send, and track agreements from one polished control
+                  center. Recent activity and document health are visible at a
+                  glance.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href="/documents/create">
+                    <button className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                      Create New Document
+                    </button>
+                  </Link>
+                  <Link href="/documents/upload">
+                    <button className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                      Upload Existing File
+                    </button>
+                  </Link>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Total documents
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900">
+                    {documents.length}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Across all statuses
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Drafts
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900">
+                    {draftCount}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Ready for editing
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Awaiting action
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900">
+                    {sentCount}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Sent for signature
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Completed
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900">
+                    {completedCount}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Finalized agreements
+                  </p>
+                </div>
+              </div>
+            </div>
+            {recentDocument && (
+              <div className="mt-8 rounded-[24px] border border-slate-200 bg-white px-6 py-5 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Most recent document
+                </p>
+                <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {recentDocument.title}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Created {new Date(recentDocument.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getStatusClasses(recentDocument.status)}`}
+                    >
+                      {recentDocument.status}
+                    </span>
+                    <Link
+                      href={
+                        recentDocument.status === "draft" ||
+                        recentDocument.status === "revert"
+                          ? `/documents/${recentDocument.id}/edit`
+                          : `/documents/${recentDocument.id}/view`
+                      }
+                    >
+                      <button className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        Open Document
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Documents section */}
         <div
           id="documents"
-          className="bg-white shadow rounded-lg overflow-hidden"
+          className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]"
         >
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">My Documents</h2>
+          <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-5 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Library
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+                  My Documents
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Track progress, reopen drafts, and review completed files.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                {documents.length} total document{documents.length === 1 ? "" : "s"}
+              </div>
+            </div>
           </div>
 
           {documents.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-gray-500 mb-4 ">No documents yet</p>
+            <div className="px-6 py-16 text-center sm:px-8">
+              <div className="mx-auto max-w-md rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-6 py-10">
+              <p className="mb-4 text-slate-500">No documents yet</p>
               <Link href="/documents/create">
-                <button className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]">
+                <button className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
                   Create your first document
                 </button>
               </Link>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead className="bg-gray-100 border-b border-gray-200">
+                <thead className="border-b border-slate-200 bg-slate-50/80">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:px-8">
                       Title
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Created
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100">
                   {documents.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {doc.title}
+                    <tr key={doc.id} className="transition-colors hover:bg-slate-50/80">
+                      <td className="px-6 py-5 text-sm font-medium text-slate-900 sm:px-8">
+                        <div className="max-w-xl">
+                          <p className="truncate font-medium">{doc.title}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {doc.status === "draft" || doc.status === "revert"
+                              ? "Editable document"
+                              : "Signature workflow in progress"}
+                          </p>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-6 py-5 whitespace-nowrap text-sm">
                         <span
-                          className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-semibold capitalize ${
-                            doc.status === "draft"
-                              ? "bg-yellow-200 text-yellow-900"
-                              : doc.status === "sent"
-                                ? "bg-blue-200 text-blue-900"
-                                : doc.status === "completed"
-                                  ? "bg-green-900 text-green-100"
-                                  : doc.status === "revert"
-                                    ? "bg-orange-200 text-orange-900"
-                                  : doc.status === "signed"
-                                    ? "bg-green-200 text-green-900"
-                                  : "bg-gray-100 text-gray-800"
-                          }`}
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getStatusClasses(doc.status)}`}
                         >
                           {doc.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-600">
                         {new Date(doc.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                      <td className="px-6 py-5 whitespace-nowrap text-sm">
                         {(doc.status === "draft" || doc.status === "revert") && (
-                          <>
+                          <div className="flex flex-wrap gap-2">
                             <Link href={`/documents/${doc.id}/edit`}>
-                              <button className="px-4 py-1.5 rounded-full text-sm font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]">
+                              <button className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
                                 Edit
                               </button>
                             </Link>
                             <button
                               onClick={() => handleDeleteDocument(doc.id)}
-                              className="px-4 py-1.5 rounded-full text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-all duration-300 ease-out hover:scale-[1.02]"
+                              className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                             >
                               Delete
                             </button>
-                          </>
+                          </div>
                         )}
                         {doc.status !== "draft" && doc.status !== "revert" && (
                           <Link href={`/documents/${doc.id}/view`}>
-                            <button className="px-4 py-1.5 rounded-full text-sm font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]">
+                            <button className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
                               View
                             </button>
                           </Link>

@@ -41,6 +41,8 @@ export default function InvoicesPage() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+  const [deletingInvoice, setDeletingInvoice] = useState(false);
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
@@ -243,16 +245,54 @@ export default function InvoicesPage() {
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
-    if (!confirm("Delete this invoice?")) return;
-
     try {
+      setDeletingInvoice(true);
       const { error } = await supabase.from("invoices").delete().eq("id", invoiceId);
       if (error) throw error;
       setInvoices((prev) => prev.filter((invoice) => invoice.id !== invoiceId));
+      setInvoiceToDelete(null);
     } catch (err: unknown) {
       const message = getErrorMessage(err, "Failed to delete invoice");
       alert("Error deleting invoice: " + message);
+    } finally {
+      setDeletingInvoice(false);
     }
+  };
+
+  const totalInvoices = invoices.length;
+  const totalOutstanding = invoices.reduce((sum, invoice) => {
+    const milestones = Array.isArray(invoice.milestones)
+      ? (invoice.milestones as InvoiceMilestone[])
+      : [];
+    const completedAmount = milestones.reduce((innerSum, milestone) => {
+      const isFullySigned =
+        !!(milestone.sender_signature_text || "").trim() &&
+        !!(milestone.receiver_signature_text || "").trim();
+      if (!isFullySigned) return innerSum;
+      const value = Number(milestone.amount || 0);
+      return innerSum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+    const total = Number(invoice.total_amount ?? invoice.amount ?? 0);
+    return sum + Math.max(total - completedAmount, 0);
+  }, 0);
+  const inProgressCount = invoices.filter(
+    (invoice) => invoice.status === "draft" || invoice.status === "in_progress",
+  ).length;
+  const completedCount = invoices.filter(
+    (invoice) => invoice.status === "completed" || invoice.status === "received",
+  ).length;
+
+  const getInvoiceStatusClasses = (status?: string) => {
+    if (status === "completed") {
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    }
+    if (status === "received") {
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    }
+    if (status === "draft" || status === "in_progress") {
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    }
+    return "border-slate-200 bg-slate-100 text-slate-700";
   };
 
   if (loading) {
@@ -264,13 +304,62 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-50 text-slate-900">
+      {invoiceToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[28px] bg-white p-8 shadow-2xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
+                <svg
+                  className="h-8 w-8 text-rose-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </div>
+              <h3 className="mt-5 text-2xl font-semibold text-slate-900">
+                Delete Invoice?
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                <span className="font-medium text-slate-900">
+                  {invoiceToDelete.client_name}
+                </span>{" "}
+                will be removed permanently.
+              </p>
+              <div className="mt-6 flex w-full gap-3">
+                <button
+                  onClick={() => setInvoiceToDelete(null)}
+                  disabled={deletingInvoice}
+                  className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteInvoice(invoiceToDelete.id)}
+                  disabled={deletingInvoice}
+                  className="flex-1 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {deletingInvoice ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-4">
               <Link href="/dashboard">
-                <button className="h-10 w-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-black/80 transition-colors font-serif">
+                <button className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-950 text-white shadow-sm transition-colors hover:bg-slate-800">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-5 w-5"
@@ -287,11 +376,62 @@ export default function InvoicesPage() {
                   </svg>
                 </button>
               </Link>
-              <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Invoices
+                  </span>
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Billing workspace
+                  </span>
+                </div>
+                <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.03em] text-slate-950 sm:text-4xl">
+                  Invoice Library
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Manage one-time and milestone invoices, track outstanding
+                  balances, and open signature flows from one place.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Total invoices
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {totalInvoices}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Saved to your account
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      In progress
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {inProgressCount}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Awaiting signatures
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Completed
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {completedCount}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Finalized invoices
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
             <button
               onClick={openCreateModal}
-              className="font-serif px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]"
+              className="flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
             >
               Create Invoice
             </button>
@@ -299,58 +439,89 @@ export default function InvoicesPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         {errorMessage ? (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-lg font-serif">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
             {errorMessage}
           </div>
         ) : (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+            <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-5 sm:px-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Library
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+                    Saved Invoices
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Review balances, status, and signature progress at a glance.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                  {totalOutstanding > 0
+                    ? `${totalOutstanding.toFixed(2)} total outstanding across invoices`
+                    : "All tracked invoice balances are settled"}
+                </div>
+              </div>
+            </div>
             {invoices.length === 0 ? (
-              <div className="px-6 py-12 text-center">
-                <p className="text-gray-500 mb-4 font-serif">No invoices yet</p>
-                <button
-                  onClick={openCreateModal}
-                  className="font-serif px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d]"
-                >
-                  Create your first invoice
-                </button>
+              <div className="px-6 py-16 text-center sm:px-8">
+                <div className="mx-auto max-w-xl rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-6 py-12">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Empty library
+                  </p>
+                  <h3 className="mt-4 text-2xl font-semibold text-slate-900">
+                    No invoices yet
+                  </h3>
+                  <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+                    Create your first invoice to start managing one-time or
+                    milestone billing flows.
+                  </p>
+                  <button
+                    onClick={openCreateModal}
+                    className="mt-8 rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                  >
+                    Create Your First Invoice
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full">
-                  <thead className="bg-gray-100 border-b border-gray-200">
+                  <thead className="border-b border-slate-200 bg-slate-50/80">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:px-8">
                         Client
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Amount
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Remaining
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Due Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Created
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Actions
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Delete
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-100">
                     {invoices.map((invoice) => {
                       const totalAmount = Number(
                         invoice.total_amount ?? invoice.amount ?? 0,
@@ -372,45 +543,52 @@ export default function InvoicesPage() {
                         0,
                       ).toFixed(2);
                       return (
-                        <tr key={invoice.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-serif">
-                            {invoice.client_name}
+                        <tr key={invoice.id} className="transition-colors hover:bg-slate-50/80">
+                          <td className="px-6 py-5 text-sm text-slate-700 sm:px-8">
+                            <div className="max-w-xs">
+                              <p className="font-medium text-slate-900">
+                                {invoice.client_name}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {invoice.invoice_number || "Invoice"}
+                              </p>
+                            </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-serif capitalize">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-700 capitalize">
                             {invoice.invoice_type === "one_time"
                               ? "One Time"
                               : "Milestone"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-serif">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-700">
                             {invoice.currency} {totalAmount}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-serif">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-700">
                             {invoice.currency} {remainingAmount}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold capitalize bg-gray-100 text-gray-800">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm">
+                            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getInvoiceStatusClasses(invoice.status)}`}>
                               {getInvoiceStatusLabel(invoice.status)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-serif">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-700">
                             {invoice.due_date
                               ? new Date(invoice.due_date).toLocaleDateString()
                               : "-"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-serif">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-600">
                             {new Date(invoice.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm">
                             <Link href={`/invoices/${invoice.id}`}>
-                              <button className="inline-flex items-center px-4 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 font-serif">
+                              <button className="inline-flex items-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                                 View
                               </button>
                             </Link>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td className="px-6 py-5 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => handleDeleteInvoice(invoice.id)}
-                              className="inline-flex items-center px-4 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 font-serif"
+                              onClick={() => setInvoiceToDelete(invoice)}
+                              className="inline-flex items-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"
                             >
                               Delete
                             </button>
@@ -428,21 +606,30 @@ export default function InvoicesPage() {
 
       {showModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 font-serif">
-              Create Invoice
-            </h3>
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[32px] bg-white shadow-2xl">
+            <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Invoice editor
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-slate-900">
+                Create Invoice
+              </h3>
+              <p className="mt-2 text-sm text-slate-500">
+                Configure billing structure, recipients, due date, and milestone
+                breakdown before sharing.
+              </p>
+            </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5 p-6 sm:p-8">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Payment Type *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setInvoiceType("milestone")}
-                    className={`px-4 py-3 rounded-lg border text-left font-serif transition-colors ${
+                    className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
                       form.invoice_type === "milestone"
                         ? "border-black bg-black text-white"
                         : "border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
@@ -453,7 +640,7 @@ export default function InvoicesPage() {
                   <button
                     type="button"
                     onClick={() => setInvoiceType("one_time")}
-                    className={`px-4 py-3 rounded-lg border text-left font-serif transition-colors ${
+                    className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
                       form.invoice_type === "one_time"
                         ? "border-black bg-black text-white"
                         : "border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
@@ -474,7 +661,7 @@ export default function InvoicesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, client_name: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                 />
               </div>
 
@@ -489,7 +676,7 @@ export default function InvoicesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, client_email: e.target.value }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                   />
                 </div>
                 <div>
@@ -506,7 +693,7 @@ export default function InvoicesPage() {
                       }))
                     }
                     placeholder="sender@example.com"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                   />
                 </div>
               </div>
@@ -526,7 +713,7 @@ export default function InvoicesPage() {
                       }))
                     }
                     placeholder="receiver@example.com"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                   />
                 </div>
                 <div>
@@ -539,7 +726,7 @@ export default function InvoicesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, due_date: e.target.value }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                   />
                 </div>
               </div>
@@ -570,11 +757,11 @@ export default function InvoicesPage() {
                     setForm((prev) => ({ ...prev, description: e.target.value }))
                   }
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                 />
               </div>
 
-              <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-gray-900 font-serif">
                     {form.invoice_type === "milestone"
@@ -585,7 +772,7 @@ export default function InvoicesPage() {
                     <button
                       type="button"
                       onClick={addMilestoneItem}
-                      className="text-xs px-3 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 font-serif"
+                    className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
                     >
                       + Add Item
                     </button>
@@ -609,7 +796,7 @@ export default function InvoicesPage() {
                             ? `Milestone ${index + 1} item`
                             : "Payment item"
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                        className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-black shadow-sm"
                       />
                     </div>
                     <div className="sm:col-span-4">
@@ -622,7 +809,7 @@ export default function InvoicesPage() {
                           updateItem(entry.id, "amount", e.target.value)
                         }
                         placeholder="Amount"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                        className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-black shadow-sm"
                       />
                     </div>
                     <div className="sm:col-span-1">
@@ -630,7 +817,7 @@ export default function InvoicesPage() {
                         <button
                           type="button"
                           onClick={() => removeMilestoneItem(entry.id)}
-                          className="w-full sm:w-auto px-2 py-2 text-xs rounded-md border border-red-300 text-red-700 hover:bg-red-50 font-serif"
+                          className="w-full rounded-2xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:w-auto"
                         >
                           X
                         </button>
@@ -652,17 +839,17 @@ export default function InvoicesPage() {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex gap-3 border-t border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-6">
               <button
                 onClick={handleCreateInvoice}
                 disabled={saving}
-                className="flex-1 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 disabled:opacity-50 font-medium font-serif"
+                className="flex-1 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
               >
                 {saving ? "Creating..." : "Create Invoice"}
               </button>
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-md hover:bg-gray-400 font-medium font-serif"
+                className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>

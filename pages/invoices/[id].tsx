@@ -46,6 +46,19 @@ const getInvoiceStatusLabel = (status?: string) => {
   return status.replace(/_/g, " ");
 };
 
+const getInvoiceStatusClasses = (status?: string) => {
+  if (status === "completed") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+  if (status === "received") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+  if (status === "draft" || status === "in_progress") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+  return "border-slate-200 bg-slate-100 text-slate-700";
+};
+
 export default function InvoiceViewPage() {
   const router = useRouter();
   const { id, email } = router.query;
@@ -1205,10 +1218,10 @@ export default function InvoiceViewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-slate-900">
       {showShareEmailModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+          <div className="bg-white rounded-[28px] p-8 max-w-sm w-full shadow-2xl">
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                 <svg
@@ -1254,8 +1267,8 @@ export default function InvoiceViewPage() {
 
       {showShareLinkModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
+          <div className="bg-white rounded-[28px] p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
               Share Links
             </h3>
             <p className="text-sm text-gray-700 mb-4">
@@ -1265,14 +1278,14 @@ export default function InvoiceViewPage() {
               {shareRecipients.map((recipientEmail) => (
                 <div
                   key={recipientEmail}
-                  className="border border-gray-200 rounded p-3 flex items-center justify-between gap-2"
+                  className="border border-slate-200 rounded-2xl p-3 flex items-center justify-between gap-2"
                 >
                   <span className="font-medium text-gray-900 text-sm break-all">
                     {recipientEmail}
                   </span>
                   <button
                     onClick={() => copyRecipientLink(recipientEmail)}
-                    className="bg-black hover:bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                    className="bg-slate-950 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                   >
                     Copy Link
                   </button>
@@ -1281,7 +1294,7 @@ export default function InvoiceViewPage() {
             </div>
             <button
               onClick={() => setShowShareLinkModal(false)}
-              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer"
+              className="w-full mt-4 px-4 py-3 border border-slate-200 bg-white text-slate-700 rounded-2xl hover:bg-slate-50 cursor-pointer"
             >
               Close
             </button>
@@ -1291,11 +1304,11 @@ export default function InvoiceViewPage() {
 
       {showDownloadModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-xl font-semibold text-gray-900 font-serif">
+          <div className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-xl font-semibold text-gray-900">
               Download Invoice
             </h3>
-            <p className="text-sm text-gray-600 mt-2 font-serif">
+            <p className="text-sm text-gray-600 mt-2">
               Choose file format: PDF or PNG. Export includes all invoice
               details and signature metadata.
             </p>
@@ -1303,21 +1316,21 @@ export default function InvoiceViewPage() {
               <button
                 onClick={downloadInvoiceAsPDF}
                 disabled={downloadingFile}
-                className="w-full px-4 py-2 bg-black text-white rounded-full hover:bg-gray-800 disabled:opacity-50 font-serif"
+                className="w-full px-4 py-3 bg-slate-950 text-white rounded-2xl hover:bg-slate-800 disabled:opacity-50"
               >
                 {downloadingFile ? "Preparing..." : "Download PDF"}
               </button>
               <button
                 onClick={downloadInvoiceAsPNG}
                 disabled={downloadingFile}
-                className="w-full px-4 py-2 bg-black text-white rounded-full hover:bg-gray-800 disabled:opacity-50 font-serif"
+                className="w-full px-4 py-3 bg-slate-950 text-white rounded-2xl hover:bg-slate-800 disabled:opacity-50"
               >
                 {downloadingFile ? "Preparing..." : "Download PNG"}
               </button>
               <button
                 onClick={() => setShowDownloadModal(false)}
                 disabled={downloadingFile}
-                className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 disabled:opacity-50 font-serif"
+                className="w-full px-4 py-3 border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1328,7 +1341,7 @@ export default function InvoiceViewPage() {
 
       {signatureModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+          <div className="bg-white rounded-[28px] p-6 max-w-md w-full shadow-2xl">
             {(() => {
               const isAlreadySigned = !!signatureModal.signedAt;
               const canSignThisRole =
@@ -1337,16 +1350,16 @@ export default function InvoiceViewPage() {
               const isReadOnly = isAlreadySigned || !canSignThisRole;
               return (
                 <>
-                  <h3 className="text-lg font-semibold text-gray-900 font-serif">
+                  <h3 className="text-xl font-semibold text-gray-900">
                     {signatureModal.role === "sender"
                       ? "Sender Signature"
                       : "Receiver Signature"}
                   </h3>
-                  <p className="text-xs text-gray-500 mt-1 font-serif">
+                  <p className="text-xs text-gray-500 mt-1">
                     Milestone: {signatureModal.milestoneItem}
                   </p>
                   <div className="mt-4 border-t-2 border-gray-900 pt-4">
-                    <label className="block text-xs text-gray-500 mb-1 font-serif">
+                    <label className="block text-xs text-gray-500 mb-1">
                       Type signature
                     </label>
                     <input
@@ -1354,10 +1367,10 @@ export default function InvoiceViewPage() {
                       value={signatureInput}
                       onChange={(e) => setSignatureInput(e.target.value)}
                       disabled={isReadOnly}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-serif disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full px-3 py-3 border border-slate-200 rounded-2xl text-sm disabled:bg-gray-100 disabled:text-gray-500"
                       placeholder="Enter signature text"
                     />
-                    <label className="block text-xs text-gray-500 mt-3 mb-1 font-serif">
+                    <label className="block text-xs text-gray-500 mt-3 mb-1">
                       Signature style
                     </label>
                     <select
@@ -1368,7 +1381,7 @@ export default function InvoiceViewPage() {
                         )
                       }
                       disabled={isReadOnly}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-serif disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full px-3 py-3 border border-slate-200 rounded-2xl text-sm disabled:bg-gray-100 disabled:text-gray-500"
                     >
                       <option value="cursive">Cursive</option>
                       <option value="script">Script</option>
@@ -1382,11 +1395,11 @@ export default function InvoiceViewPage() {
                     >
                       {signatureInput || "_________________"}
                     </p>
-                    <p className="text-sm text-gray-600 mt-2 font-serif">
+                    <p className="text-sm text-gray-600 mt-2">
                       {signatureModal.email}
                     </p>
                     {signatureModal.signedAt && (
-                      <div className="mt-3 text-xs text-gray-600 space-y-1 font-serif">
+                      <div className="mt-3 text-xs text-gray-600 space-y-1">
                         <p>IP: {signatureModal.signedByIp || "Unknown"}</p>
                         <p>
                           Location: {signatureModal.signedByCity || "Unknown"},{" "}
@@ -1402,7 +1415,7 @@ export default function InvoiceViewPage() {
                   <div className="flex gap-3 mt-6">
                     <button
                       onClick={() => setSignatureModal(null)}
-                      className={`${isReadOnly ? "w-full" : "flex-1"} px-4 py-2 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 font-serif`}
+                      className={`${isReadOnly ? "w-full" : "flex-1"} px-4 py-3 border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50`}
                     >
                       Close
                     </button>
@@ -1410,7 +1423,7 @@ export default function InvoiceViewPage() {
                       <button
                         onClick={saveMilestoneSignature}
                         disabled={savingSignature}
-                        className="flex-1 px-4 py-2 bg-black text-white rounded-full hover:bg-gray-800 disabled:opacity-50 font-serif"
+                        className="flex-1 px-4 py-3 bg-slate-950 text-white rounded-2xl hover:bg-slate-800 disabled:opacity-50"
                       >
                         {savingSignature ? "Saving..." : "Sign"}
                       </button>
@@ -1423,13 +1436,13 @@ export default function InvoiceViewPage() {
         </div>
       )}
 
-      <header className="shadow">
-        <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+        <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-4">
               {!isPublicView && (
                 <Link href="/invoices">
-                  <button className="h-10 w-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-black/80 transition-colors font-serif">
+                  <button className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-950 text-white shadow-sm transition-colors hover:bg-slate-800">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-5 w-5"
@@ -1447,15 +1460,54 @@ export default function InvoiceViewPage() {
                   </button>
                 </Link>
               )}
-              <h1 className="text-3xl font-bold text-gray-900">Invoice</h1>
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${getInvoiceStatusClasses(invoice.status)}`}>
+                    {getInvoiceStatusLabel(invoice.status)}
+                  </span>
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    {isPublicView ? "Shared invoice" : "Invoice workspace"}
+                  </span>
+                </div>
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-slate-950 sm:text-4xl">
+                  {invoice.client_name}
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Review billing details, signature progress, and milestone
+                  status in one place.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Total
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {invoice.currency} {totalAmount.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Remaining
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {invoice.currency} {remainingAmountToBePaid.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Milestones
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {editableMilestones.length}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold capitalize bg-gray-100 text-gray-800">
-                {getInvoiceStatusLabel(invoice.status)}
-              </span>
+            <div className="flex w-full flex-col gap-3 lg:w-auto lg:items-end">
               <button
                 onClick={() => setShowDownloadModal(true)}
-                className="font-serif px-4 py-2 bg-black text-white border border-black rounded-4xl hover:bg-gray-800 flex items-center justify-center gap-2 cursor-pointer"
+                className="flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 cursor-pointer"
               >
                 Download
               </button>
@@ -1465,28 +1517,28 @@ export default function InvoiceViewPage() {
                   <button
                     onClick={() => setShowSharePopover((v) => !v)}
                     disabled={sendingShareEmail}
-                    className="font-serif px-4 py-2 bg-black text-white border border-black rounded-4xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:border-gray-400 flex items-center justify-center gap-2 cursor-pointer"
+                    className="flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 cursor-pointer"
                   >
                     {sendingShareEmail ? "Sharing..." : "Share"}
                   </button>
                   {showSharePopover && (
-                    <div className="absolute right-0 mt-2 w-52 bg-white border border-black rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="absolute right-0 z-50 mt-2 w-full min-w-[220px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
                       <button
                         onClick={() => {
                           setShowSharePopover(false);
                           setShowShareEmailModal(true);
                         }}
-                        className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100 font-serif cursor-pointer"
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50 cursor-pointer"
                       >
                         Share via Email
                       </button>
-                      <div className="border-t border-black/10" />
+                      <div className="border-t border-slate-100" />
                       <button
                         onClick={() => {
                           setShowSharePopover(false);
                           setShowShareLinkModal(true);
                         }}
-                        className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100 font-serif cursor-pointer"
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50 cursor-pointer"
                       >
                         Share Link
                       </button>
@@ -1499,93 +1551,102 @@ export default function InvoiceViewPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg p-6 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+          <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-5 sm:px-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Overview
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+              Invoice Details
+            </h2>
+          </div>
+          <div className="space-y-8 p-6 sm:p-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Invoice Number
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.invoice_number}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Type
               </p>
-              <p className="text-lg text-gray-900 font-serif capitalize">
+              <p className="text-lg text-gray-900 capitalize">
                 {invoice.invoice_type === "one_time"
                   ? "One Time Payment"
                   : "Milestone"}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Client Name
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.client_name}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Client Email
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.client_email || "-"}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Sender Signer Email
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.sender_signer_email || "-"}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Receiver Signer Email
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.receiver_signer_email || "-"}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Due Date
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.due_date
                   ? new Date(invoice.due_date).toLocaleDateString()
                   : "-"}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Total
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.currency} {totalAmount.toFixed(2)}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Remaining Amount To Be Paid
               </p>
-              <p className="text-lg text-gray-900 font-serif">
+              <p className="text-lg text-gray-900">
                 {invoice.currency} {remainingAmountToBePaid.toFixed(2)}
               </p>
             </div>
           </div>
 
           {invoice.description && (
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 Description
               </p>
-              <p className="mt-1 text-gray-900 font-serif">
+              <p className="mt-1 text-gray-900">
                 {invoice.description}
               </p>
             </div>
@@ -1593,7 +1654,7 @@ export default function InvoiceViewPage() {
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-serif">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
                 {invoice.invoice_type === "milestone" ? "Milestones" : "Item"}
               </p>
               {canEditMilestones && (
@@ -1601,7 +1662,7 @@ export default function InvoiceViewPage() {
                   {invoice.invoice_type === "milestone" && (
                     <button
                       onClick={addMilestoneRow}
-                      className="text-xs px-3 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 font-serif"
+                      className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800"
                     >
                       + Add Milestone
                     </button>
@@ -1609,35 +1670,35 @@ export default function InvoiceViewPage() {
                   <button
                     onClick={saveMilestones}
                     disabled={savingMilestones}
-                    className="text-xs px-3 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 disabled:opacity-50 font-serif"
+                    className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:opacity-50"
                   >
                     {savingMilestones ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               )}
             </div>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white">
               <table className="min-w-full">
-                <thead className="bg-gray-100">
+                <thead className="bg-slate-50/80 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Item
                     </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Amount
                     </th>
-                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Sender Signature
                     </th>
-                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Receiver Signature
                     </th>
-                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Delete
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100">
                   {editableMilestones.length > 0 ? (
                     editableMilestones.map((entry, index) => {
                       const rowLocked =
@@ -1655,7 +1716,7 @@ export default function InvoiceViewPage() {
 
                       return (
                         <tr key={entry.id}>
-                          <td className="px-4 py-2 text-sm text-gray-900 font-serif">
+                          <td className="px-4 py-3 text-sm text-gray-900">
                             {canEditMilestones ? (
                               <input
                                 type="text"
@@ -1668,13 +1729,13 @@ export default function InvoiceViewPage() {
                                   )
                                 }
                                 disabled={rowLocked}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm font-serif disabled:bg-gray-100 disabled:text-gray-500"
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
                               />
                             ) : (
                               entry.item
                             )}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900 font-serif text-right">
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">
                             {canEditMilestones ? (
                               <div className="flex items-center justify-end gap-2">
                                 <span>{invoice.currency}</span>
@@ -1691,52 +1752,52 @@ export default function InvoiceViewPage() {
                                     )
                                   }
                                   disabled={rowLocked}
-                                  className="w-28 px-2 py-1 border border-gray-300 rounded text-sm font-serif text-right disabled:bg-gray-100 disabled:text-gray-500"
+                                  className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm text-right disabled:bg-gray-100 disabled:text-gray-500"
                                 />
                               </div>
                             ) : (
                               `${invoice.currency} ${Number(entry.amount || 0).toFixed(2)}`
                             )}
                           </td>
-                          <td className="px-4 py-2 text-center">
+                          <td className="px-4 py-3 text-center">
                             <button
                               onClick={() =>
                                 openSignatureModal(entry, "sender", index)
                               }
                               disabled={!isCurrentMilestoneUnlocked}
-                              className="text-xs px-3 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed font-serif"
+                              className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
                             >
                               {entry.sender_signature_text
                                 ? "View Signature"
                                 : "Not Signed"}
                             </button>
                           </td>
-                          <td className="px-4 py-2 text-center">
+                          <td className="px-4 py-3 text-center">
                             <button
                               onClick={() =>
                                 openSignatureModal(entry, "receiver", index)
                               }
                               disabled={!isCurrentMilestoneUnlocked}
-                              className="text-xs px-3 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed font-serif"
+                              className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
                             >
                               {entry.receiver_signature_text
                                 ? "View Signature"
                                 : "Not Signed"}
                             </button>
                           </td>
-                          <td className="px-4 py-2 text-center">
+                          <td className="px-4 py-3 text-center">
                             {canEditMilestones &&
                             invoice.invoice_type === "milestone" &&
                             editableMilestones.length > 1 &&
                             !rowLocked ? (
                               <button
                                 onClick={() => removeMilestoneRow(entry.id)}
-                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 text-xs font-serif"
+                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-rose-600 text-white hover:bg-rose-700 text-xs"
                               >
                                 Delete
                               </button>
                             ) : (
-                              <span className="text-xs text-gray-400 font-serif">
+                              <span className="text-xs text-gray-400">
                                 -
                               </span>
                             )}
@@ -1747,7 +1808,7 @@ export default function InvoiceViewPage() {
                   ) : (
                     <tr>
                       <td
-                        className="px-4 py-3 text-sm text-gray-500 font-serif"
+                        className="px-4 py-4 text-sm text-gray-500"
                         colSpan={5}
                       >
                         No items found.
@@ -1757,6 +1818,7 @@ export default function InvoiceViewPage() {
                 </tbody>
               </table>
             </div>
+          </div>
           </div>
         </div>
       </main>

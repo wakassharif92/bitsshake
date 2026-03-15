@@ -18,6 +18,10 @@ export default function Templates() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isTrialExpired, setIsTrialExpired] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<Template | null>(
+    null,
+  );
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
 
   const dynamicVariables = [
     { label: "Client Name", value: "{clientName}" },
@@ -153,15 +157,23 @@ export default function Templates() {
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    if (!confirm("Delete this template?")) return;
-
     try {
+      setDeletingTemplate(true);
       await supabase.from("templates").delete().eq("id", id);
       setTemplates(templates.filter((t) => t.id !== id));
+      setTemplateToDelete(null);
     } catch (err: any) {
       alert("Error deleting template: " + err.message);
+    } finally {
+      setDeletingTemplate(false);
     }
   };
+
+  const totalTemplates = templates.length;
+  const templatesWithContent = templates.filter(
+    (template) => !!template.content?.trim(),
+  ).length;
+  const newestTemplate = templates[0] || null;
 
   if (loading) {
     return (
@@ -173,20 +185,40 @@ export default function Templates() {
 
   if (isTrialExpired) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50 text-slate-900">
+        <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/dashboard">
-                  <button className="text-gray-600 hover:text-gray-900">
-                    ← Back
+                  <button className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-950 text-white shadow-sm transition-colors hover:bg-slate-800">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
                   </button>
                 </Link>
-                <h1 className="text-3xl font-bold text-gray-900">Templates</h1>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Templates
+                  </p>
+                  <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-slate-950">
+                    Template Library
+                  </h1>
+                </div>
               </div>
               <Link href="/pricing">
-                <button className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium">
+                <button className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
                   Upgrade
                 </button>
               </Link>
@@ -194,19 +226,32 @@ export default function Templates() {
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto py-16 px-6 text-center">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Your free trial has ended
-          </h2>
-          <p className="mt-3 text-gray-600">
-            Please upgrade to continue using templates.
-          </p>
-          <div className="mt-8">
-            <Link href="/pricing">
-              <button className="px-8 py-3 rounded-full bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-white font-semibold">
-                View pricing
-              </button>
-            </Link>
+        <main className="max-w-5xl mx-auto px-6 py-16">
+          <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+            <div className="bg-[linear-gradient(135deg,#f8fafc,white_55%,#eef2ff)] px-8 py-12 text-center sm:px-12">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Access required
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-slate-950">
+                Your free trial has ended
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-slate-600">
+                Upgrade to save reusable agreement layouts, speed up document
+                creation, and keep your common terms organized in one place.
+              </p>
+              <div className="mt-8 flex justify-center gap-3">
+                <Link href="/pricing">
+                  <button className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                    View Pricing
+                  </button>
+                </Link>
+                <Link href="/dashboard">
+                  <button className="rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                    Back to Dashboard
+                  </button>
+                </Link>
+              </div>
+            </div>
           </div>
         </main>
       </div>
@@ -214,14 +259,62 @@ export default function Templates() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-50 text-slate-900">
+      {templateToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[28px] bg-white p-8 shadow-2xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
+                <svg
+                  className="h-8 w-8 text-rose-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </div>
+              <h3 className="mt-5 text-2xl font-semibold text-slate-900">
+                Delete Template?
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                <span className="font-medium text-slate-900">
+                  {templateToDelete.name}
+                </span>{" "}
+                will be removed permanently. This action cannot be undone.
+              </p>
+              <div className="mt-6 flex w-full gap-3">
+                <button
+                  onClick={() => setTemplateToDelete(null)}
+                  disabled={deletingTemplate}
+                  className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteTemplate(templateToDelete.id)}
+                  disabled={deletingTemplate}
+                  className="flex-1 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {deletingTemplate ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-4">
               <Link href="/dashboard">
-                <button className="h-10 w-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-black/80 transition-colors font-serif">
+                <button className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-950 text-white shadow-sm transition-colors hover:bg-slate-800">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-5 w-5"
@@ -238,73 +331,183 @@ export default function Templates() {
                   </svg>
                 </button>
               </Link>
-              <h1 className="text-3xl font-bold text-gray-900">Templates</h1>
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Templates
+                  </span>
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Reusable content library
+                  </span>
+                </div>
+                <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.03em] text-slate-950 sm:text-4xl">
+                  Template Library
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Save your most-used agreements and clauses so new documents
+                  start with structure instead of blank pages.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Total templates
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {totalTemplates}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Saved to your workspace
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Ready to use
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {templatesWithContent}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      With template content
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Latest update
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {newestTemplate
+                        ? new Date(newestTemplate.created_at).toLocaleDateString()
+                        : "--"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Most recent template
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                setNewTemplate({ name: "", content: "" });
-                setEditingId(null);
-                setShowModal(true);
-              }}
-              className="font-serif px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]"
-            >
-              Create Template
-            </button>
+            <div className="flex w-full flex-col gap-3 lg:max-w-xs lg:items-end">
+              <button
+                onClick={() => {
+                  setNewTemplate({ name: "", content: "" });
+                  setEditingId(null);
+                  setShowModal(true);
+                }}
+                className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 lg:w-auto"
+              >
+                Create Template
+              </button>
+              <Link href="/documents/create" className="w-full lg:w-auto">
+                <button className="flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                  Use in Document
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+          <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-5 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Library
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+                  Saved Templates
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Edit reusable wording, refine structure, and launch new
+                  documents faster.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                {templates.length} template{templates.length === 1 ? "" : "s"}
+              </div>
+            </div>
+          </div>
+
           {templates.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-gray-500 mb-4 font-serif">No templates yet</p>
-              <button
-                onClick={() => setShowModal(true)}
-                className="font-serif px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02]"
-              >
-                Create your first template
-              </button>
+            <div className="px-6 py-16 text-center sm:px-8">
+              <div className="mx-auto max-w-xl rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-6 py-12">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Empty library
+                </p>
+                <h3 className="mt-4 text-2xl font-semibold text-slate-900">
+                  No templates yet
+                </h3>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+                  Start with a reusable contract, proposal, or service
+                  agreement so future documents can be generated in seconds.
+                </p>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="mt-8 rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                >
+                  Create Your First Template
+                </button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead className="bg-gray-100 border-b border-gray-200">
+                <thead className="border-b border-slate-200 bg-slate-50/80">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:px-8">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Created
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider font-serif">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100">
                   {templates.map((template) => (
-                    <tr key={template.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-serif">
-                        {template.name}
+                    <tr
+                      key={template.id}
+                      className="transition-colors hover:bg-slate-50/80"
+                    >
+                      <td className="px-6 py-5 text-sm text-slate-900 sm:px-8">
+                        <div className="max-w-xl">
+                          <p className="font-medium">{template.name}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {(template.content || "")
+                              .replace(/<[^>]*>/g, " ")
+                              .replace(/\s+/g, " ")
+                              .trim()
+                              .slice(0, 90) || "No content added yet"}
+                            {(template.content || "")
+                              .replace(/<[^>]*>/g, " ")
+                              .replace(/\s+/g, " ")
+                              .trim().length > 90
+                              ? "..."
+                              : ""}
+                          </p>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-600">
                         {new Date(template.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
-                        <button
-                          onClick={() => handleEditTemplate(template)}
-                          className="text-blue-600 hover:text-blue-800 font-serif"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTemplate(template.id)}
-                          className="text-red-600 hover:text-red-800 font-serif"
-                        >
-                          Delete
-                        </button>
+                      <td className="px-6 py-5 whitespace-nowrap text-sm">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleEditTemplate(template)}
+                            className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setTemplateToDelete(template)}
+                            className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -318,24 +521,35 @@ export default function Templates() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full h-[90vh] flex flex-col">
+          <div className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
-                {editingId ? "Edit Template" : "Create Template"}
-              </h3>
+            <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Template editor
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold text-slate-900">
+                    {editingId ? "Edit Template" : "Create Template"}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-500">
+                    Build reusable agreement content with smart variable
+                    placeholders.
+                  </p>
+                </div>
               <button
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:text-slate-600"
               >
-                ✕
+                  ✕
               </button>
+              </div>
             </div>
 
             {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col">
+            <div className="flex flex-1 flex-col overflow-y-auto p-6 sm:p-8">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 font-serif">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Template Name *
                 </label>
                 <input
@@ -345,22 +559,28 @@ export default function Templates() {
                     setNewTemplate({ ...newTemplate, name: e.target.value })
                   }
                   placeholder="e.g., Service Agreement"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black font-serif"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-black shadow-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
               </div>
 
-              <div className="flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700 font-serif">
+              <div className="mt-5 flex flex-1 flex-col">
+                <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">
                     Content
                   </label>
-                  <div className="text-xs text-gray-600 font-serif">
-                    Click below to insert dynamic variables
+                    <p className="mt-1 text-xs text-slate-500">
+                      Use variables to personalize documents when the template
+                      is loaded.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                    Click any variable to insert it into the editor.
                   </div>
                 </div>
 
                 {/* Dynamic Variables Buttons */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
                   {dynamicVariables.map((variable) => (
                     <button
                       key={variable.value}
@@ -370,13 +590,13 @@ export default function Templates() {
                           content: newTemplate.content + variable.value,
                         });
                       }}
-                      className="px-2 py-1 text-xs bg-black font-bold text-white rounded hover:bg-gray-800 border border-black font-serif"
+                      className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
                     >
-                      +{variable.label}
+                      + {variable.label}
                     </button>
                   ))}
                 </div>
-                <div className="bg-white rounded-lg border border-gray-300 overflow-hidden flex flex-col flex-1">
+                <div className="flex flex-1 flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
                   <RichEditor
                     content={newTemplate.content}
                     onChange={(content) =>
@@ -388,11 +608,11 @@ export default function Templates() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex gap-2 p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex gap-3 border-t border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-6">
               <button
                 onClick={handleSaveTemplate}
                 disabled={saving || !newTemplate.name.trim()}
-                className="flex-1 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 disabled:opacity-50 font-medium font-serif"
+                className="flex-1 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
               >
                 {saving
                   ? "Saving..."
@@ -402,7 +622,7 @@ export default function Templates() {
               </button>
               <button
                 onClick={handleCloseModal}
-                className="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-md hover:bg-gray-400 font-medium font-serif"
+                className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel
               </button>

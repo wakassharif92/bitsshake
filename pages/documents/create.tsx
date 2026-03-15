@@ -276,27 +276,36 @@ export default function CreateDocument() {
 
           {/* Template selection */}
           {templates.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Load from template (optional)
-              </label>
-              <select
-                value={selectedTemplate}
-                onChange={(e) => {
-                  setSelectedTemplate(e.target.value);
-                  if (e.target.value) {
-                    handleLoadTemplate(e.target.value);
-                  }
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-              >
-                <option value="">Select a template...</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Load from template (optional)
+                  </label>
+                  <select
+                    value={selectedTemplate}
+                    onChange={(e) => {
+                      setSelectedTemplate(e.target.value);
+                      if (e.target.value) {
+                        handleLoadTemplate(e.target.value);
+                      }
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  >
+                    <option value="">Select a template...</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Link href="/templates">
+                  <button className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                    Manage Templates
+                  </button>
+                </Link>
+              </div>
             </div>
           )}
 
@@ -309,13 +318,22 @@ export default function CreateDocument() {
 
       {/* Variable Modal */}
       {showVariableModal && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[28px] bg-white shadow-2xl">
+            <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Template setup
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-900">
                 Fill Template Variables
               </h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Add the values that should replace your selected template
+                placeholders.
+              </p>
+            </div>
 
+            <div className="p-6">
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 {templateVariables.map((variable) => (
                   <div key={variable.name}>
@@ -345,13 +363,13 @@ export default function CreateDocument() {
                     setTemplateVariables([]);
                     setVariableValues({});
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleApplyVariables}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="flex-1 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   Apply Variables
                 </button>

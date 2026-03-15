@@ -617,6 +617,21 @@ export default function EditDocument() {
   const attachedInvoices = attachedInvoiceIds
     .map((invoiceId) => invoices.find((invoice) => invoice.id === invoiceId))
     .filter(Boolean) as Invoice[];
+  const signers = recipients.filter((recipient) => recipient.role === "signer");
+  const viewers = recipients.filter((recipient) => recipient.role !== "signer");
+  const completedSignerCount = signers.filter(
+    (recipient) => recipient.status === "signed",
+  ).length;
+  const documentStatusLabel =
+    document.status.charAt(0).toUpperCase() + document.status.slice(1);
+  const statusTone =
+    document.status === "completed" || document.status === "signed"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : document.status === "sent"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : document.status === "revert"
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : "border-slate-200 bg-slate-100 text-slate-700";
   const getInvoiceRemainingAmount = (invoice: Invoice) => {
     const totalAmount = Number(invoice.total_amount ?? invoice.amount ?? 0);
     const milestones = Array.isArray(invoice.milestones)
@@ -638,7 +653,7 @@ export default function EditDocument() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 text-slate-900">
       {/* Success Modal */}
       {showSavedModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
@@ -994,12 +1009,12 @@ export default function EditDocument() {
         </div>
       )}
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-12">
+      <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-4">
               <Link href="/dashboard">
-                <button className="h-10 w-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-black/80 transition-colors">
+                <button className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-950 text-white shadow-sm transition-colors hover:bg-slate-800">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-5 w-5"
@@ -1016,106 +1031,147 @@ export default function EditDocument() {
                   </svg>
                 </button>
               </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${statusTone}`}
+                  >
+                    {documentStatusLabel}
+                  </span>
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Editing workspace
+                  </span>
+                </div>
+                <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.03em] text-slate-950 sm:text-4xl">
                   Edit Document
                 </h1>
-                <div className="mt-2">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full border border-red-600 text-red-600 text-xs font-semibold uppercase tracking-wide">
-                    {document.status}
-                  </span>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Refine content, manage recipients, and prepare this agreement
+                  for delivery without leaving the editor.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Signers
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {completedSignerCount}/{signers.length}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Signed recipients
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Viewers
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {viewers.length}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Read-only recipients
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Mode
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                      {isEditableStatus ? "Editable" : "Locked"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Current document state
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              {document.status === "sent" && isDocumentAdmin && (
+            <div className="flex w-full flex-col gap-3 lg:max-w-sm lg:items-end">
+              <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-1">
                 <button
-                  onClick={handleOpenRevertModal}
-                  disabled={revertingDocument || isLocked}
-                  className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-red-600 hover:bg-red-700 transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                  onClick={handleSaveDocument}
+                  disabled={saving || isLocked}
+                  className="flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  {revertingDocument ? "Reverting..." : "Revert"}
+                  {saving ? "Saving..." : "Save Document"}
                 </button>
-              )}
-              <button
-                onClick={openAttachInvoiceModal}
-                disabled={isLocked || attachingInvoice || !currentUser?.id}
-                className="px-6 py-2.5 rounded-full text-[14px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
-              >
-                {attachingInvoice ? "Attaching..." : "Attach Invoice"}
-              </button>
-              <button
-                onClick={handleSaveDocument}
-                disabled={saving || isLocked}
-                className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
-              >
-                {saving ? "Saving..." : "Save Document"}
-              </button>
-              <div className="relative">
-                <button
-                  ref={sendButtonRef}
-                  onClick={() => setShowSendPopover((v) => !v)}
-                  disabled={sendingDocument || isLocked}
-                  className="px-8 py-2.5 rounded-full text-[15px] font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
-                >
-                  {sendingDocument ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full"></div>
-                      Sending...
-                    </>
-                  ) : (
-                    "Send to Recipients"
-                  )}
-                </button>
-                {showSendPopover && (
-                  <div className="absolute right-0 mt-2 w-52 bg-white border border-black rounded-xl shadow-xl z-50 overflow-hidden">
-                    <button
-                      onClick={() => {
-                        setShowSendPopover(false);
-                        handleSendViaEmail();
-                      }}
-                      className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100"
-                      disabled={
-                        sendingDocument ||
-                        !isEditableStatus ||
-                        isLocked
-                      }
-                    >
-                      Send via Email
-                    </button>
-                    <div className="border-t border-black/10" />
-                    <button
-                      onClick={() => {
-                        setShowSendPopover(false);
-                        if (isEditableStatus) {
-                          handleSendViaLink();
-                        } else {
-                          // Pre-populate all links for recipients if not already
-                          if (
-                            Object.keys(generatedLinks).length !==
-                            recipients.length
-                          ) {
-                            const baseUrl =
-                              process.env.NEXT_PUBLIC_APP_URL ||
-                              (typeof window !== "undefined"
-                                ? window.location.origin
-                                : "");
-                            const links: { [recipientId: string]: string } = {};
-                            recipients.forEach((recipient) => {
-                              links[recipient.id] =
-                                `${baseUrl}/sign/${id}?email=${encodeURIComponent(recipient.email)}`;
-                            });
-                            setGeneratedLinks(links);
-                          }
-                          setShowLinkModal(true);
+                <div className="relative">
+                  <button
+                    ref={sendButtonRef}
+                    onClick={() => setShowSendPopover((v) => !v)}
+                    disabled={sendingDocument || isLocked}
+                    className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    {sendingDocument ? "Sending..." : "Send / Share"}
+                  </button>
+                  {showSendPopover && (
+                    <div className="absolute right-0 z-50 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
+                      <button
+                        onClick={() => {
+                          setShowSendPopover(false);
+                          handleSendViaEmail();
+                        }}
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
+                        disabled={
+                          sendingDocument || !isEditableStatus || isLocked
                         }
-                      }}
-                      className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-100"
-                      disabled={sendingDocument || isLocked}
-                    >
-                      {isEditableStatus ? "Send Link" : "View Links"}
-                    </button>
-                  </div>
+                      >
+                        Send via Email
+                      </button>
+                      <div className="border-t border-slate-100" />
+                      <button
+                        onClick={() => {
+                          setShowSendPopover(false);
+                          if (isEditableStatus) {
+                            handleSendViaLink();
+                          } else {
+                            // Pre-populate all links for recipients if not already
+                            if (
+                              Object.keys(generatedLinks).length !==
+                              recipients.length
+                            ) {
+                              const baseUrl =
+                                process.env.NEXT_PUBLIC_APP_URL ||
+                                (typeof window !== "undefined"
+                                  ? window.location.origin
+                                  : "");
+                              const links: {
+                                [recipientId: string]: string;
+                              } = {};
+                              recipients.forEach((recipient) => {
+                                links[recipient.id] =
+                                  `${baseUrl}/sign/${id}?email=${encodeURIComponent(recipient.email)}`;
+                              });
+                              setGeneratedLinks(links);
+                            }
+                            setShowLinkModal(true);
+                          }
+                        }}
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
+                        disabled={sendingDocument || isLocked}
+                      >
+                        {isEditableStatus ? "Send Link" : "View Links"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="grid w-full gap-3 sm:grid-cols-2">
+                <button
+                  onClick={openAttachInvoiceModal}
+                  disabled={isLocked || attachingInvoice || !currentUser?.id}
+                  className="flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  {attachingInvoice ? "Attaching..." : "Attach Invoice"}
+                </button>
+                {document.status === "sent" && isDocumentAdmin && (
+                  <button
+                    onClick={handleOpenRevertModal}
+                    disabled={revertingDocument || isLocked}
+                    className="flex min-h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    {revertingDocument ? "Reverting..." : "Revert for Edits"}
+                  </button>
                 )}
               </div>
             </div>
@@ -1124,10 +1180,10 @@ export default function EditDocument() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 overflow-hidden flex">
-        <div className="flex-1 overflow-hidden flex flex-col px-4 sm:px-6 lg:px-8 py-4">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 overflow-hidden px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="flex-1 overflow-hidden flex flex-col pr-0 lg:pr-8">
           {isLocked && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               Your trial has ended. Upgrade to edit documents, manage
               recipients, send for signature, or use chat.
               <Link href="/pricing" className="ml-2 font-semibold underline">
@@ -1135,105 +1191,150 @@ export default function EditDocument() {
               </Link>
             </div>
           )}
-          {/* Title input */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Document Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-              disabled={!isEditableStatus || isLocked}
-            />
-          </div>
-
-          {/* Document content */}
-          {document.is_uploaded ? (
-            <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-lg border border-gray-300">
-              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+            <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#f8fafc,white_55%,#eef2ff)] px-8 py-6 sm:px-10">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                Document setup
+              </p>
+              <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Uploaded PDF
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Manage recipients on the right.
-                  </p>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Document Title
+                  </label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-black shadow-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                    disabled={!isEditableStatus || isLocked}
+                  />
                 </div>
-                {document.file_url && (
-                  <a
-                    href={document.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-                  >
-                    Open in New Tab
-                  </a>
-                )}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Recipients
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                      {recipients.length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Invoices
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                      {attachedInvoices.length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Access
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                      {isLocked ? "Limited" : "Active"}
+                    </p>
+                  </div>
+                </div>
               </div>
-              {document.file_url ? (
-                <iframe
-                  title="Uploaded PDF"
-                  src={document.file_url}
-                  className="flex-1 w-full"
-                />
+            </div>
+
+            <div className="flex-1 p-6 sm:p-8">
+              {document.is_uploaded ? (
+                <div className="flex h-full min-h-[720px] overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
+                  <div className="flex w-full flex-col">
+                    <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          Uploaded PDF
+                        </h3>
+                        <p className="text-sm text-slate-600">
+                          Review the source file while managing recipients from
+                          the workspace.
+                        </p>
+                      </div>
+                      {document.file_url && (
+                        <a
+                          href={document.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                        >
+                          Open in New Tab
+                        </a>
+                      )}
+                    </div>
+                    {document.file_url ? (
+                      <iframe
+                        title="Uploaded PDF"
+                        src={document.file_url}
+                        className="flex-1 w-full bg-white"
+                      />
+                    ) : (
+                      <div className="p-6">
+                        <p className="text-sm text-red-600">
+                          PDF file link not available.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <div className="p-6">
-                  <p className="text-sm text-red-600">
-                    PDF file link not available.
-                  </p>
+                <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
+                  <RichEditor
+                    content={content}
+                    onChange={setContent}
+                    readOnly={!isEditableStatus || isLocked}
+                  />
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-lg border border-gray-300">
-              <RichEditor
-                content={content}
-                onChange={setContent}
-                readOnly={!isEditableStatus || isLocked}
-              />
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Right sidebar tabs */}
-        <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
-          <div className="p-4 border-b border-gray-200 flex gap-2">
+        <div className="hidden w-80 shrink-0 overflow-y-auto lg:block">
+          <div className="overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+          <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Workspace
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
             <button
               onClick={() => setActiveSidebarTab("conversation")}
-              className={`px-4 py-2 rounded-4xl font-medium transition-colors text-[13px] font-serif cursor-pointer ${
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
                 activeSidebarTab === "conversation"
-                  ? "bg-black text-white"
-                  : "bg-transparent text-black border border-black hover:bg-gray-50"
+                  ? "bg-slate-950 text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
               Conversation
             </button>
             <button
               onClick={() => setActiveSidebarTab("recipients")}
-              className={`px-4 py-2 rounded-4xl font-medium transition-colors text-[13px] font-serif cursor-pointer ${
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
                 activeSidebarTab === "recipients"
-                  ? "bg-black text-white"
-                  : "bg-transparent text-black border border-black hover:bg-gray-50"
+                  ? "bg-slate-950 text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
               Recipients
             </button>
             <button
               onClick={() => setActiveSidebarTab("invoice")}
-              className={`px-4 py-2 rounded-4xl font-medium transition-colors text-[13px] font-serif cursor-pointer ${
+              className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
                 activeSidebarTab === "invoice"
-                  ? "bg-black text-white"
-                  : "bg-transparent text-black border border-black hover:bg-gray-50"
+                  ? "bg-slate-950 text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
               Invoice
             </button>
           </div>
+          </div>
 
           {activeSidebarTab === "conversation" && (
-            <div className="p-2">
+            <div className="p-4">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               <ChatPanel
                 documentId={String(id)}
                 userEmail={currentUserEmail}
@@ -1242,6 +1343,7 @@ export default function EditDocument() {
                 isDisabled={isLocked}
                 recipients={recipients}
               />
+              </div>
             </div>
           )}
 
@@ -1255,7 +1357,7 @@ export default function EditDocument() {
                   <button
                     onClick={() => setShowModal(true)}
                     disabled={!isEditableStatus || isLocked}
-                    className="px-6 py-2 rounded-full text-sm font-medium text-white bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2px_4px_rgba(0,0,0,0.5)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),_0_3px_6px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                    className="rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                   >
                     + Add
                   </button>
@@ -1264,47 +1366,47 @@ export default function EditDocument() {
 
               <div className="space-y-3">
                 {recipients.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
                     No recipients added yet
-                  </p>
+                  </div>
                 ) : (
                   recipients.map((recipient) => (
                     <div
                       key={recipient.id}
-                      className="border border-gray-200 rounded-lg p-3"
+                      className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-medium text-sm text-gray-900">
+                          <p className="font-medium text-sm text-slate-900">
                             {recipient.email}
                           </p>
-                          <p className="text-xs text-gray-600 mt-1">
+                          <p className="mt-1 text-xs text-slate-600">
                             Full name:{" "}
                             <span className="font-medium text-gray-800">
                               {recipient.name || "Not provided"}
                             </span>
                           </p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-slate-600">
                             Company:{" "}
                             <span className="font-medium text-gray-800">
                               {recipient.company_name || "Not provided"}
                             </span>
                           </p>
-                          <p className="text-xs text-gray-600 mt-1">
+                          <p className="mt-1 text-xs text-slate-600">
                             Role:{" "}
                             <span className="font-medium">
                               {recipient.role}
                             </span>
                           </p>
                           {recipient.position && (
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-slate-600">
                               Position:{" "}
                               <span className="font-medium">
                                 {recipient.position}
                               </span>
                             </p>
                           )}
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-slate-600">
                             Status:{" "}
                             <span
                               className={`font-medium ${
@@ -1319,7 +1421,7 @@ export default function EditDocument() {
                             </span>
                           </p>
                           {recipient.signed_at && (
-                            <p className="text-xs text-gray-600 mt-1">
+                            <p className="mt-1 text-xs text-slate-600">
                               Signed:{" "}
                               {new Date(recipient.signed_at).toLocaleString()}
                             </p>
@@ -1329,7 +1431,7 @@ export default function EditDocument() {
                           <button
                             onClick={() => handleRemoveRecipient(recipient.id)}
                             disabled={isLocked}
-                            className="text-red-600 hover:text-red-800 text-xs disabled:opacity-50"
+                            className="text-xs text-rose-600 hover:text-rose-800 disabled:opacity-50"
                           >
                             Remove
                           </button>
@@ -1344,7 +1446,7 @@ export default function EditDocument() {
 
           {activeSidebarTab === "invoice" && (
             <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice</h2>
+              <h2 className="mb-4 text-lg font-medium text-slate-900">Invoice</h2>
               {attachedInvoices.length > 0 ? (
                 <div className="space-y-3">
                   {attachedInvoices.map((attachedInvoice) => {
@@ -1355,50 +1457,50 @@ export default function EditDocument() {
                     return (
                       <div
                         key={attachedInvoice.id}
-                        className="border border-gray-200 rounded-lg p-4"
+                        className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
                       >
                         <div className="flex items-start justify-between mb-3 gap-2">
                           <Link href={`/invoices/${attachedInvoice.id}`}>
-                            <p className="font-medium text-sm text-gray-900 hover:underline cursor-pointer">
+                            <p className="font-medium text-sm text-slate-900 hover:underline cursor-pointer">
                               {attachedInvoice.invoice_number || "Attached Invoice"}
                             </p>
                           </Link>
                           <button
                             onClick={() => handleDetachInvoice(attachedInvoice.id)}
                             disabled={attachingInvoice || detachingInvoice}
-                            className="text-xs px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                            className="rounded-full bg-rose-600 px-3 py-1 text-xs text-white hover:bg-rose-700 disabled:opacity-50"
                           >
                             Detach
                           </button>
                         </div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium capitalize">
+                          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-xs font-medium capitalize text-slate-700 ring-1 ring-slate-200">
                             {String(attachedInvoice.status || "").replace(/_/g, " ")}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-slate-600">
                           Amount:{" "}
-                          <span className="font-medium text-gray-800">
+                          <span className="font-medium text-slate-800">
                             {attachedInvoice.currency} {total.toFixed(2)}
                           </span>
                         </p>
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="mt-1 text-xs text-slate-600">
                           Remaining Amount:{" "}
-                          <span className="font-medium text-gray-800">
+                          <span className="font-medium text-slate-800">
                             {attachedInvoice.currency} {remaining.toFixed(2)}
                           </span>
                         </p>
                         {attachedInvoice.due_date && (
-                          <p className="text-xs text-gray-600 mt-1">
+                          <p className="mt-1 text-xs text-slate-600">
                             Due Date:{" "}
-                            <span className="font-medium text-gray-800">
+                            <span className="font-medium text-slate-800">
                               {new Date(attachedInvoice.due_date).toLocaleDateString()}
                             </span>
                           </p>
                         )}
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="mt-1 text-xs text-slate-600">
                           Created:{" "}
-                          <span className="font-medium text-gray-800">
+                          <span className="font-medium text-slate-800">
                             {new Date(attachedInvoice.created_at).toLocaleDateString()}
                           </span>
                         </p>
@@ -1407,14 +1509,14 @@ export default function EditDocument() {
                   })}
                 </div>
               ) : (
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm text-gray-500 mb-3">
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                  <p className="mb-3 text-sm text-slate-500">
                     No invoice attached yet.
                   </p>
                   <button
                     onClick={openAttachInvoiceModal}
                     disabled={isLocked || attachingInvoice || !currentUser?.id}
-                    className="px-4 py-2 rounded-full text-sm font-medium text-white bg-black hover:bg-gray-800 disabled:opacity-50"
+                    className="rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                   >
                     Attach Invoice
                   </button>
@@ -1422,6 +1524,7 @@ export default function EditDocument() {
               )}
             </div>
           )}
+          </div>
         </div>
       </main>
 
