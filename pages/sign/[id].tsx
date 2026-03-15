@@ -383,22 +383,40 @@ export default function SignDocument() {
           <p className="text-black text-sm sm:text-base">
             Document or recipient not found. Please check your signing link.
           </p>
-          <p className="text-xs text-gray-600">Document ID: {urlDocId || "-"}</p>
+          <p className="text-xs text-gray-600">
+            Document ID: {urlDocId || "-"}
+          </p>
           <p className="text-xs text-gray-600">Email: {urlEmail || "-"}</p>
         </div>
       </div>
     );
   }
 
+  const signedRecipients = allRecipients.filter(
+    (r) => r.role === "signer" && r.status === "signed",
+  );
+  const recipientStatusTone =
+    recipient.status === "signed"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : recipient.role === "viewer"
+        ? "border-sky-200 bg-sky-50 text-sky-700"
+        : "border-amber-200 bg-amber-50 text-amber-700";
+  const recipientStatusLabel =
+    recipient.status === "signed"
+      ? "Signed"
+      : recipient.role === "viewer"
+        ? "Viewer access"
+        : "Awaiting signature";
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       {showRevertModal && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
             <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
                 <svg
-                  className="w-8 h-8 text-red-700"
+                  className="h-8 w-8 text-rose-700"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -411,37 +429,37 @@ export default function SignDocument() {
                   />
                 </svg>
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900">
+              <h3 className="text-2xl font-semibold text-slate-900">
                 Revert Document?
               </h3>
-              <p className="text-gray-600">
+              <p className="text-sm leading-6 text-slate-600">
                 Revert will send this document back for editing.
               </p>
               <div className="w-full text-left">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Revert reason <span className="text-red-500">*</span>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Revert reason <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   value={revertReason}
                   onChange={(e) => setRevertReason(e.target.value)}
                   rows={4}
                   placeholder="Explain why this document should be reverted..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent text-black"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
                   disabled={revertingDocument}
                 />
               </div>
-              <div className="flex gap-3 w-full mt-2">
+              <div className="mt-2 flex w-full gap-3">
                 <button
                   onClick={() => setShowRevertModal(false)}
                   disabled={revertingDocument}
-                  className="flex-1 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="flex-1 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmRevertDocument}
                   disabled={revertingDocument || !revertReason.trim()}
-                  className="flex-1 px-6 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                  className="flex-1 rounded-2xl bg-rose-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
                 >
                   {revertingDocument ? "Reverting..." : "Revert"}
                 </button>
@@ -469,319 +487,428 @@ export default function SignDocument() {
         </div>
       )} */}
       {/* Header */}
-      <header className=" shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <Image
-            src="/bitsshake-logo-4.png"
-            alt="BitsShake Logo"
-            width={120}
-            height={48}
-            className="mx-auto"
-          />
-          <h1 className="mb-6 text-1xl sm:text-[20px] text-center font-semibold tracking-tight text-black/90 font-serif">
-            Bits Shake
-          </h1>
-
-          <h1 className="text-2xl sm:text-[40px] text-center font-semibold tracking-tight text-black/90 font-serif">
-            {document.title}
-          </h1>
+      <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="overflow-hidden rounded-[32px] border border-white/70 bg-[linear-gradient(135deg,#f8fafc,white_50%,#eef2ff)] shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+            <div className="grid gap-8 px-6 py-8 sm:px-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-center">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Secure signing
+                  </span>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${recipientStatusTone}`}
+                  >
+                    {recipientStatusLabel}
+                  </span>
+                </div>
+                <div className="mt-6 flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <Image
+                      src="/bitsshake-logo-4.png"
+                      alt="BitsShake Logo"
+                      width={50}
+                      height={50}
+                    />
+                  </div>
+                  <div>
+                    {/* <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Workspace
+                    </p> */}
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      Bits Shake
+                    </p>
+                  </div>
+                </div>
+                <h1 className="mt-8 max-w-4xl text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
+                  {document.title}
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
+                  Review the agreement, confirm your signature details, and sign
+                  securely from this workspace.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Recipient
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                    {recipient.name || recipient.email}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {recipient.email}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Role
+                  </p>
+                  <p className="mt-2 text-sm font-semibold capitalize text-slate-900">
+                    {recipient.role}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {recipient.role === "viewer"
+                      ? "Read-only access"
+                      : "Action required to complete"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Signatures
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                    {signedRecipients.length} completed
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {allRecipients.filter((r) => r.role === "signer").length}{" "}
+                    total signer
+                    {allRecipients.filter((r) => r.role === "signer").length ===
+                    1
+                      ? ""
+                      : "s"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.75fr)_380px] lg:items-start">
           {/* Document content */}
-          <div className="lg:col-span-2">
-            <div className="bg-white shadow rounded-lg p-8">
-              <div className="prose prose-lg max-w-none text-black">
-                <div
-                  dangerouslySetInnerHTML={{ __html: document.content || "" }}
-                  className="font-serif text-gray-900 leading-relaxed"
-                  style={{ lineHeight: "1.75" }}
-                />
+          <div>
+            <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+              <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-8 py-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Agreement
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                      Document preview
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                    Review before signing
+                  </span>
+                </div>
               </div>
+              <div className="p-8">
+                <div className="prose prose-lg max-w-none text-black">
+                  <div
+                    dangerouslySetInnerHTML={{ __html: document.content || "" }}
+                    className="font-serif leading-relaxed text-slate-900"
+                    style={{ lineHeight: "1.75" }}
+                  />
+                </div>
 
-              {/* Signatures section */}
-              {allRecipients.filter(
-                (r) => r.role === "signer" && r.status === "signed",
-              ).length > 0 && (
-                <div className="mt-12 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6 font-serif">
-                    Signatures
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {allRecipients
-                      .filter(
-                        (r) => r.role === "signer" && r.status === "signed",
-                      )
-                      .map((signer) => (
+                {/* Signatures section */}
+                {signedRecipients.length > 0 && (
+                  <div className="mt-12 border-t border-slate-200 pt-8">
+                    <h3 className="mb-6 text-lg font-semibold text-slate-900 font-serif">
+                      Signatures
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      {signedRecipients.map((signer) => (
                         <div
                           key={signer.id}
-                          className="border-t-2 border-gray-900 pt-4"
+                          className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5"
                         >
                           <p
                             style={{
                               fontSize: "24px",
                               fontFamily: "cursive",
                             }}
-                            className="text-gray-900 mb-2 font-serif"
+                            className="mb-2 text-slate-900 font-serif"
                           >
                             {signer.signature_text || "_________________"}
                           </p>
-                          <p className="text-sm text-gray-600 font-serif">
+                          <p className="text-sm text-slate-700 font-serif">
                             {signer.name || signer.email}
                           </p>
                           {signer.name && (
-                            <p className="text-xs text-gray-500 font-serif">
+                            <p className="text-xs text-slate-500 font-serif">
                               {signer.email}
                             </p>
                           )}
                           {signer.signed_at && (
-                            <p className="text-xs text-gray-500 mt-1 font-serif">
+                            <p className="mt-1 text-xs text-slate-500 font-serif">
                               Signed:{" "}
                               {new Date(signer.signed_at).toLocaleString()}
                             </p>
                           )}
                         </div>
                       ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Discussion signatures section */}
-              {chatSignatures.length > 0 && (
-                <div className="mt-12 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6 font-serif">
-                    Signature Agreement
-                  </h3>
-                  <div className="space-y-6">
-                    {chatSignatures.map((sig) => {
-                      const parsed = parseChatSignature(sig.message);
-                      const title = parsed.sigReason
-                        ? `${parsed.sigReason} Signature`
-                        : "Signature";
-                      return (
-                        <div
-                          key={sig.id}
-                          className="border border-gray-200 rounded-lg p-4"
-                        >
-                          <p className="text-sm font-semibold text-gray-900 font-serif">
-                            {title}
-                          </p>
-                          {parsed.sigName && (
-                            <p
-                              className="mt-2 text-2xl text-gray-900 font-serif"
-                              style={{
-                                fontFamily: parsed.signatureFontFamily,
-                              }}
-                            >
-                              {parsed.sigName}
+                {/* Discussion signatures section */}
+                {chatSignatures.length > 0 && (
+                  <div className="mt-12 border-t border-slate-200 pt-8">
+                    <h3 className="mb-6 text-lg font-semibold text-slate-900 font-serif">
+                      Signature Agreement
+                    </h3>
+                    <div className="space-y-6">
+                      {chatSignatures.map((sig) => {
+                        const parsed = parseChatSignature(sig.message);
+                        const title = parsed.sigReason
+                          ? `${parsed.sigReason} Signature`
+                          : "Signature";
+                        return (
+                          <div
+                            key={sig.id}
+                            className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                          >
+                            <p className="text-sm font-semibold text-slate-900 font-serif">
+                              {title}
                             </p>
-                          )}
-                          <div className="mt-2 text-xs text-gray-600 space-y-1 font-serif">
-                            <p>Name: {sig.sender_name || sig.sender_email}</p>
-                            <p>Email: {sig.sender_email}</p>
-                            {sig.sender_location && (
-                              <p>Location: {sig.sender_location}</p>
+                            {parsed.sigName && (
+                              <p
+                                className="mt-2 text-2xl text-slate-900 font-serif"
+                                style={{
+                                  fontFamily: parsed.signatureFontFamily,
+                                }}
+                              >
+                                {parsed.sigName}
+                              </p>
                             )}
-                            {sig.sender_ip && <p>IP: {sig.sender_ip}</p>}
-                            <p>
-                              Signed:{" "}
-                              {new Date(sig.created_at).toLocaleString()}
-                            </p>
+                            <div className="mt-2 space-y-1 text-xs text-slate-600 font-serif">
+                              <p>Name: {sig.sender_name || sig.sender_email}</p>
+                              <p>Email: {sig.sender_email}</p>
+                              {sig.sender_location && (
+                                <p>Location: {sig.sender_location}</p>
+                              )}
+                              {sig.sender_ip && <p>IP: {sig.sender_ip}</p>}
+                              <p>
+                                Signed:{" "}
+                                {new Date(sig.created_at).toLocaleString()}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
           {/* Signature panel */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="space-y-6">
-              {/* Status */}
-              <div>
-                <p className="text-sm text-gray-600 font-serif">Your email:</p>
-                <p className="font-medium text-gray-900 font-serif">
-                  {recipient.email}
+          <div className="space-y-6 lg:sticky lg:top-8">
+            <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+              <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Signer panel
                 </p>
-                <p className="text-sm text-gray-600 mt-2 font-serif">
-                  Your role: {recipient.role}
+                <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+                  {recipient.role === "viewer"
+                    ? "Review access"
+                    : "Complete your signature"}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {recipient.role === "viewer"
+                    ? "You can review the agreement and follow the discussion from here."
+                    : "Confirm your details, preview your signature, and submit when you are ready."}
                 </p>
               </div>
+              <div className="space-y-6 p-6">
+                {/* Status */}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Your email
+                    </p>
+                    <p className="mt-2 break-all text-sm font-semibold text-slate-900 font-serif">
+                      {recipient.email}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Your role
+                    </p>
+                    <p className="mt-2 text-sm font-semibold capitalize text-slate-900 font-serif">
+                      {recipient.role}
+                    </p>
+                  </div>
+                </div>
 
-              {/* Signature type selection */}
-              {recipient.role === "signer" &&
-                recipient.status === "pending" && (
-                  <>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 font-serif">
-                        Sign Document
-                      </h3>
-                      <div className="space-y-3">
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="radio"
-                            name="signatureType"
-                            value="typed"
-                            checked={signatureType === "typed"}
-                            onChange={(e) =>
-                              setSignatureType(
-                                e.target.value as "typed" | "draw",
-                              )
-                            }
-                            className="h-4 w-4 text-black"
-                          />
-                          <span className="ml-2 text-sm text-gray-700 font-serif">
-                            Type signature
-                          </span>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="radio"
-                            name="signatureType"
-                            value="draw"
-                            checked={signatureType === "draw"}
-                            onChange={(e) =>
-                              setSignatureType(
-                                e.target.value as "typed" | "draw",
-                              )
-                            }
-                            className="h-4 w-4 text-black"
-                          />
-                          <span className="ml-2 text-sm text-gray-700 font-serif">
-                            Draw signature
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {signatureType === "typed" && (
+                {/* Signature type selection */}
+                {recipient.role === "signer" &&
+                  recipient.status === "pending" && (
+                    <>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 font-serif">
-                          Your Name
-                        </label>
-                        <input
-                          type="text"
-                          value={signatureText}
-                          onChange={(e) => setSignatureText(e.target.value)}
-                          placeholder="Type your full name"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-serif"
-                        />
-
-                        <label className="block text-sm font-medium text-gray-700 mt-4 mb-2 font-serif">
-                          Signature Style
-                        </label>
-                        <select
-                          value={signatureFont}
-                          onChange={(e) => setSignatureFont(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-serif"
-                        >
-                          {fonts.map((f) => (
-                            <option key={f.value} value={f.value}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
-
-                        {signatureText && (
-                          <div className="mt-4 p-4 border border-gray-300 rounded-md bg-gray-50 font-serif">
-                            <p className="text-xs text-gray-600 mb-2 font-serif">
-                              Preview:
-                            </p>
-                            <p
-                              style={{
-                                fontFamily:
-                                  signatureFont === "cursive"
-                                    ? "cursive"
-                                    : signatureFont === "script"
-                                      ? "script"
-                                      : "Georgia, serif",
-                                fontSize: "28px",
-                                fontStyle:
-                                  signatureFont === "formal"
-                                    ? "italic"
-                                    : "normal",
-                              }}
-                              className="text-gray-900 font-serif"
-                            >
-                              {signatureText}
-                            </p>
-                          </div>
-                        )}
+                        <h3 className="mb-4 text-lg font-semibold text-slate-900 font-serif">
+                          Sign Document
+                        </h3>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                          <label className="flex cursor-pointer items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-slate-300 hover:bg-white">
+                            <input
+                              type="radio"
+                              name="signatureType"
+                              value="typed"
+                              checked={signatureType === "typed"}
+                              onChange={(e) =>
+                                setSignatureType(
+                                  e.target.value as "typed" | "draw",
+                                )
+                              }
+                              className="h-4 w-4 text-slate-950"
+                            />
+                            <span className="ml-3 text-sm text-slate-700 font-serif">
+                              Type signature
+                            </span>
+                          </label>
+                          <label className="flex cursor-pointer items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-slate-300 hover:bg-white">
+                            <input
+                              type="radio"
+                              name="signatureType"
+                              value="draw"
+                              checked={signatureType === "draw"}
+                              onChange={(e) =>
+                                setSignatureType(
+                                  e.target.value as "typed" | "draw",
+                                )
+                              }
+                              className="h-4 w-4 text-slate-950"
+                            />
+                            <span className="ml-3 text-sm text-slate-700 font-serif">
+                              Draw signature
+                            </span>
+                          </label>
+                        </div>
                       </div>
-                    )}
 
-                    {signatureType === "draw" && (
-                      <div>
-                        <p className="text-sm text-gray-600 mb-2 font-serif">
-                          Draw signature support coming soon. Please use "Type
-                          signature" for now.
-                        </p>
-                      </div>
-                    )}
+                      {signatureType === "typed" && (
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-slate-700 font-serif">
+                            Your Name
+                          </label>
+                          <input
+                            type="text"
+                            value={signatureText}
+                            onChange={(e) => setSignatureText(e.target.value)}
+                            placeholder="Type your full name"
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-serif text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
+                          />
 
-                    <button
-                      onClick={handleSign}
-                      disabled={signing || !signatureText.trim()}
-                      className="w-full px-4 py-2 bg-black text-white rounded-md hover:bg-gray-700 disabled:opacity-50 font-medium font-serif"
-                    >
-                      {signing ? "Signing..." : "Sign Document"}
-                    </button>
-                  </>
+                          <label className="mb-2 mt-4 block text-sm font-medium text-slate-700 font-serif">
+                            Signature Style
+                          </label>
+                          <select
+                            value={signatureFont}
+                            onChange={(e) => setSignatureFont(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-serif text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
+                          >
+                            {fonts.map((f) => (
+                              <option key={f.value} value={f.value}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+
+                          {signatureText && (
+                            <div className="mt-4 rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-5 font-serif">
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 font-serif">
+                                Preview:
+                              </p>
+                              <p
+                                style={{
+                                  fontFamily:
+                                    signatureFont === "cursive"
+                                      ? "cursive"
+                                      : signatureFont === "script"
+                                        ? "script"
+                                        : "Georgia, serif",
+                                  fontSize: "28px",
+                                  fontStyle:
+                                    signatureFont === "formal"
+                                      ? "italic"
+                                      : "normal",
+                                }}
+                                className="text-slate-900 font-serif"
+                              >
+                                {signatureText}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {signatureType === "draw" && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+                          <p className="text-sm text-amber-800 font-serif">
+                            Draw signature support coming soon. Please use "Type
+                            signature" for now.
+                          </p>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleSign}
+                        disabled={signing || !signatureText.trim()}
+                        className="w-full rounded-2xl bg-slate-950 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 font-serif"
+                      >
+                        {signing ? "Signing..." : "Sign Document"}
+                      </button>
+                    </>
+                  )}
+
+                {recipient.status === "signed" && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="text-sm font-medium text-emerald-800 font-serif">
+                      Document signed!
+                    </p>
+                    <p className="mt-2 text-xs text-emerald-700 font-serif">
+                      Signed on:{" "}
+                      {new Date(recipient.signed_at || "").toLocaleString()}
+                    </p>
+                  </div>
                 )}
 
-              {recipient.status === "signed" && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-sm text-green-800 font-medium font-serif">
-                    Document signed!
-                  </p>
-                  <p className="text-xs text-green-700 mt-2 font-serif">
-                    Signed on:{" "}
-                    {new Date(recipient.signed_at || "").toLocaleString()}
-                  </p>
-                </div>
-              )}
+                {recipient.role === "viewer" && (
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                    <p className="text-sm text-sky-800 font-serif">
+                      You are viewing this document as a viewer.
+                    </p>
+                  </div>
+                )}
 
-              {recipient.role === "viewer" && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 font-serif">
-                    You are viewing this document as a viewer.
-                  </p>
-                </div>
-              )}
+                {recipient.role === "signer" && document.status === "sent" && (
+                  <button
+                    onClick={() => setShowRevertModal(true)}
+                    disabled={revertingDocument}
+                    className="w-full rounded-2xl bg-rose-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 font-serif"
+                  >
+                    {revertingDocument ? "Reverting..." : "Revert"}
+                  </button>
+                )}
+              </div>
+            </div>
 
-              {recipient.role === "signer" && document.status === "sent" && (
-                <button
-                  onClick={() => setShowRevertModal(true)}
-                  disabled={revertingDocument}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 font-medium font-serif"
-                >
-                  {revertingDocument ? "Reverting..." : "Revert"}
-                </button>
-              )}
-
-              {/* Chat Panel - Always show for all document statuses */}
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 font-serif">
+            {/* Chat Panel - Always show for all document statuses */}
+            <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+              <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-5">
+                <h3 className="text-lg font-semibold text-slate-900 font-serif">
                   Discussion
                 </h3>
-                <div
-                  style={{ height: "400px" }}
-                  className="bg-white rounded-lg border border-gray-200"
-                >
-                  <ChatPanel
-                    documentId={String(id)}
-                    userEmail={String(email)}
-                    userName={userName}
-                    isAdmin={false}
-                    recipients={recipient ? [recipient] : []}
-                  />
-                </div>
+                <p className="mt-2 text-sm text-slate-600 font-serif">
+                  Ask questions or clarify terms before the document is
+                  completed.
+                </p>
+              </div>
+              <div style={{ height: "400px" }} className="bg-white">
+                <ChatPanel
+                  documentId={String(id)}
+                  userEmail={String(email)}
+                  userName={userName}
+                  isAdmin={false}
+                  recipients={recipient ? [recipient] : []}
+                />
               </div>
             </div>
           </div>
