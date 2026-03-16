@@ -301,7 +301,7 @@ export default function Dashboard() {
 
   if (showProfileSetup) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-serif">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-helvetica-neue">
         <div className="max-w-md w-full space-y-6">
           <div className="flex items-center justify-end">
             <button
@@ -629,7 +629,8 @@ export default function Dashboard() {
                       {recentDocument.title}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                      Created {new Date(recentDocument.created_at).toLocaleDateString()}
+                      Created{" "}
+                      {new Date(recentDocument.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -676,7 +677,8 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-                {documents.length} total document{documents.length === 1 ? "" : "s"}
+                {documents.length} total document
+                {documents.length === 1 ? "" : "s"}
               </div>
             </div>
           </div>
@@ -684,12 +686,12 @@ export default function Dashboard() {
           {documents.length === 0 ? (
             <div className="px-6 py-16 text-center sm:px-8">
               <div className="mx-auto max-w-md rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-6 py-10">
-              <p className="mb-4 text-slate-500">No documents yet</p>
-              <Link href="/documents/create">
-                <button className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-                  Create your first document
-                </button>
-              </Link>
+                <p className="mb-4 text-slate-500">No documents yet</p>
+                <Link href="/documents/create">
+                  <button className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                    Create your first document
+                  </button>
+                </Link>
               </div>
             </div>
           ) : (
@@ -713,7 +715,10 @@ export default function Dashboard() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {documents.map((doc) => (
-                    <tr key={doc.id} className="transition-colors hover:bg-slate-50/80">
+                    <tr
+                      key={doc.id}
+                      className="transition-colors hover:bg-slate-50/80"
+                    >
                       <td className="px-6 py-5 text-sm font-medium text-slate-900 sm:px-8">
                         <div className="max-w-xl">
                           <p className="truncate font-medium">{doc.title}</p>
@@ -735,7 +740,8 @@ export default function Dashboard() {
                         {new Date(doc.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap text-sm">
-                        {(doc.status === "draft" || doc.status === "revert") && (
+                        {(doc.status === "draft" ||
+                          doc.status === "revert") && (
                           <div className="flex flex-wrap gap-2">
                             <Link href={`/documents/${doc.id}/edit`}>
                               <button className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">

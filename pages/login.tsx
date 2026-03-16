@@ -126,7 +126,7 @@
 
 //   if (checkingSession) {
 //     return (
-//       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-serif">
+//       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-helvetica-neue">
 //         <div className="animate-spin rounded-full h-10 w-10 border-2 border-white/60 border-t-white" />
 //       </div>
 //     );
@@ -134,7 +134,7 @@
 
 //   if (showProfileSetup) {
 //     return (
-//       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-serif relative">
+//       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-helvetica-neue relative">
 //         <div className="max-w-md w-full space-y-6">
 //           <div className="absolute top-6 right-6">
 //             <button
@@ -231,7 +231,7 @@
 //   }
 
 //   return (
-//     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-serif">
+//     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-helvetica-neue">
 //       <div className="max-w-md w-full space-y-1">
 //         <div>
 //           <Image
@@ -401,13 +401,13 @@ function AuthShell({
                   {slides && slides[currentSlide] && (
                     <>
                       <h2
-                        className="text-2xl sm:text-4xl font-semibold leading-tight text-white opacity-0 animate-fadeInUp font-serif"
+                        className="text-2xl sm:text-4xl font-semibold leading-tight text-white opacity-0 animate-fadeInUp font-helvetica-neue"
                         style={{ animationDelay: "0.2s" }}
                       >
                         {slides[currentSlide].heading}
                       </h2>
                       <p
-                        className="mt-4 text-sm sm:text-lg text-white/90 whitespace-pre-line opacity-0 animate-fadeInUp font-serif leading-tight"
+                        className="mt-4 text-sm sm:text-lg text-white/90 whitespace-pre-line opacity-0 animate-fadeInUp font-helvetica-neue leading-tight"
                         style={{ animationDelay: "0.4s" }}
                       >
                         {slides[currentSlide].subtext}
@@ -480,7 +480,9 @@ function AuthShell({
             {showHelp && (
               <div className="mt-4 flex items-center gap-2 text-xs text-black/60">
                 <span className="inline-block h-4 w-4 rounded-full border border-black/20" />
-                <span className="font-serif">hello@bitsoclock.com</span>
+                <span className="font-helvetica-neue">
+                  hello@bitsoclock.com
+                </span>
               </div>
             )}
           </div>
@@ -782,13 +784,13 @@ export default function Login() {
             height={300}
             className="mx-auto"
           />{" "}
-          <h1 className="text-2xl sm:text-[40px] text-center font-semibold tracking-tight text-black/90 font-serif">
+          <h1 className="text-2xl sm:text-[40px] text-center font-semibold tracking-tight text-black/90 font-helvetica-neue">
             Welcome to Bits Shake
           </h1>
-          <h3 className="text-center text-base sm:text-[15px] font-semibold tracking-tight text-black/90 font-serif">
+          <h3 className="text-center text-base sm:text-[15px] font-semibold tracking-tight text-black/90 font-helvetica-neue">
             The Most Affordable E-Signature You’ll Ever Need
           </h3>
-          <p className="mt-2 text-sm text-black/60 text-center font-serif">
+          <p className="mt-2 text-sm text-black/60 text-center font-helvetica-neue">
             Continue with Google to access your dashboard
           </p>
         </div>
@@ -805,7 +807,7 @@ export default function Login() {
           disabled={loading}
           className="w-full rounded-xl bg-[#0f3b2f] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-[1.02] disabled:opacity-60"
         >
-          <span className="inline-flex items-center justify-center gap-2 font-serif">
+          <span className="inline-flex items-center justify-center gap-2 font-helvetica-neue">
             {loadingProvider === "google" && <Spinner />}
             {loadingProvider === "google"
               ? "Connecting..."
@@ -821,7 +823,7 @@ export default function Login() {
           Back to home
         </button> */}
 
-        <p className="mt-6 text-center text-xs text-black/45 font-serif">
+        <p className="mt-6 text-center text-xs text-black/45 font-helvetica-neue">
           Trouble signing in? Contact support.
         </p>
       </div>

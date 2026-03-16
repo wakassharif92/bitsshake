@@ -70,24 +70,27 @@ export default function EditDocument() {
     setAlertModal({ title, message });
   }, []);
 
-  const loadInvoices = useCallback(async (adminId: string) => {
-    setLoadingInvoices(true);
-    try {
-      const { data: invoiceData, error } = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("admin_id", adminId)
-        .order("created_at", { ascending: false });
+  const loadInvoices = useCallback(
+    async (adminId: string) => {
+      setLoadingInvoices(true);
+      try {
+        const { data: invoiceData, error } = await supabase
+          .from("invoices")
+          .select("*")
+          .eq("admin_id", adminId)
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setInvoices((invoiceData || []) as Invoice[]);
-    } catch (err: any) {
-      openAlertModal("Error loading invoices: " + err.message, "Error");
-      setInvoices([]);
-    } finally {
-      setLoadingInvoices(false);
-    }
-  }, [openAlertModal]);
+        if (error) throw error;
+        setInvoices((invoiceData || []) as Invoice[]);
+      } catch (err: any) {
+        openAlertModal("Error loading invoices: " + err.message, "Error");
+        setInvoices([]);
+      } finally {
+        setLoadingInvoices(false);
+      }
+    },
+    [openAlertModal],
+  );
 
   const loadAttachedInvoices = useCallback(
     async (documentId: string) => {
@@ -103,7 +106,10 @@ export default function EditDocument() {
           .filter(Boolean);
         setAttachedInvoiceIds(ids);
       } catch (err: any) {
-        openAlertModal("Error loading attached invoices: " + err.message, "Error");
+        openAlertModal(
+          "Error loading attached invoices: " + err.message,
+          "Error",
+        );
         setAttachedInvoiceIds([]);
       }
     },
@@ -183,7 +189,10 @@ export default function EditDocument() {
     setAttachingInvoice(true);
     try {
       if (selectedInvoiceIds.length === 0) {
-        openAlertModal("Please select at least one invoice.", "No invoice selected");
+        openAlertModal(
+          "Please select at least one invoice.",
+          "No invoice selected",
+        );
         return;
       }
 
@@ -244,7 +253,8 @@ export default function EditDocument() {
   };
 
   const handleDetachInvoice = async (invoiceId: string) => {
-    const target = attachedInvoices.find((item) => item.id === invoiceId) || null;
+    const target =
+      attachedInvoices.find((item) => item.id === invoiceId) || null;
     setInvoiceToDetach(target);
     setDetachInvoiceReason("");
     setShowDetachInvoiceModal(true);
@@ -399,7 +409,10 @@ export default function EditDocument() {
       );
       return;
     }
-    if (!document || (document.status !== "draft" && document.status !== "revert")) {
+    if (
+      !document ||
+      (document.status !== "draft" && document.status !== "revert")
+    ) {
       openAlertModal(
         "Document must be in draft or revert status before sending.",
         "Invalid status",
@@ -463,7 +476,10 @@ export default function EditDocument() {
       );
       return;
     }
-    if (!document || (document.status !== "draft" && document.status !== "revert")) {
+    if (
+      !document ||
+      (document.status !== "draft" && document.status !== "revert")
+    ) {
       openAlertModal(
         "Document must be in draft or revert status before sending.",
         "Invalid status",
@@ -516,7 +532,10 @@ export default function EditDocument() {
     if (!id || !document) return;
     const isDocumentAdmin = currentUser?.id === document.admin_id;
     if (!isDocumentAdmin) {
-      openAlertModal("Only the document admin can revert this document.", "Unauthorized");
+      openAlertModal(
+        "Only the document admin can revert this document.",
+        "Unauthorized",
+      );
       return;
     }
 
@@ -757,8 +776,8 @@ export default function EditDocument() {
                 Lock Document?
               </h3>
               <p className="text-gray-600">
-                Once you generate links, this document will be locked and
-                cannot be edited. Continue?
+                Once you generate links, this document will be locked and cannot
+                be edited. Continue?
               </p>
               <div className="flex gap-3 w-full mt-6">
                 <button
@@ -813,7 +832,9 @@ export default function EditDocument() {
                         ).toFixed(2)}
                       </p>
                       {attachedInvoiceIds.includes(invoice.id) && (
-                        <p className="text-xs text-green-700 mt-1">Already attached</p>
+                        <p className="text-xs text-green-700 mt-1">
+                          Already attached
+                        </p>
                       )}
                     </div>
                     <input
@@ -876,7 +897,8 @@ export default function EditDocument() {
                 Detach Invoice?
               </h3>
               <p className="text-gray-600">
-                This will remove invoice from this document and add a conversation entry.
+                This will remove invoice from this document and add a
+                conversation entry.
               </p>
               <div className="w-full text-left">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -936,8 +958,8 @@ export default function EditDocument() {
                 Revert Document?
               </h3>
               <p className="text-gray-600">
-                Revert will unlock this sent document for editing and set
-                its status to <strong>revert</strong>.
+                Revert will unlock this sent document for editing and set its
+                status to <strong>revert</strong>.
               </p>
               <div className="w-full text-left">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1294,236 +1316,255 @@ export default function EditDocument() {
         {/* Right sidebar tabs */}
         <div className="hidden w-80 shrink-0 overflow-y-auto lg:block">
           <div className="overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
-          <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              Workspace
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setActiveSidebarTab("conversation")}
-              className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
-                activeSidebarTab === "conversation"
-                  ? "bg-slate-950 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              Conversation
-            </button>
-            <button
-              onClick={() => setActiveSidebarTab("recipients")}
-              className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
-                activeSidebarTab === "recipients"
-                  ? "bg-slate-950 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              Recipients
-            </button>
-            <button
-              onClick={() => setActiveSidebarTab("invoice")}
-              className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
-                activeSidebarTab === "invoice"
-                  ? "bg-slate-950 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              Invoice
-            </button>
-          </div>
-          </div>
-
-          {activeSidebarTab === "conversation" && (
-            <div className="p-4">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-              <ChatPanel
-                documentId={String(id)}
-                userEmail={currentUserEmail}
-                userName={currentUserName}
-                isAdmin={true}
-                isDisabled={isLocked}
-                recipients={recipients}
-              />
+            <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                Workspace
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setActiveSidebarTab("conversation")}
+                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
+                    activeSidebarTab === "conversation"
+                      ? "bg-slate-950 text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  Conversation
+                </button>
+                <button
+                  onClick={() => setActiveSidebarTab("recipients")}
+                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
+                    activeSidebarTab === "recipients"
+                      ? "bg-slate-950 text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  Recipients
+                </button>
+                <button
+                  onClick={() => setActiveSidebarTab("invoice")}
+                  className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
+                    activeSidebarTab === "invoice"
+                      ? "bg-slate-950 text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  Invoice
+                </button>
               </div>
             </div>
-          )}
 
-          {activeSidebarTab === "recipients" && (
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Recipients
-                </h2>
-                {isEditableStatus && (
-                  <button
-                    onClick={() => setShowModal(true)}
-                    disabled={!isEditableStatus || isLocked}
-                    className="rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    + Add
-                  </button>
-                )}
+            {activeSidebarTab === "conversation" && (
+              <div className="p-4">
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                  <ChatPanel
+                    documentId={String(id)}
+                    userEmail={currentUserEmail}
+                    userName={currentUserName}
+                    isAdmin={true}
+                    isDisabled={isLocked}
+                    recipients={recipients}
+                  />
+                </div>
               </div>
+            )}
 
-              <div className="space-y-3">
-                {recipients.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-                    No recipients added yet
-                  </div>
-                ) : (
-                  recipients.map((recipient) => (
-                    <div
-                      key={recipient.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
+            {activeSidebarTab === "recipients" && (
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    Recipients
+                  </h2>
+                  {isEditableStatus && (
+                    <button
+                      onClick={() => setShowModal(true)}
+                      disabled={!isEditableStatus || isLocked}
+                      className="rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-sm text-slate-900">
-                            {recipient.email}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-600">
-                            Full name:{" "}
-                            <span className="font-medium text-gray-800">
-                              {recipient.name || "Not provided"}
-                            </span>
-                          </p>
-                          <p className="text-xs text-slate-600">
-                            Company:{" "}
-                            <span className="font-medium text-gray-800">
-                              {recipient.company_name || "Not provided"}
-                            </span>
-                          </p>
-                          <p className="mt-1 text-xs text-slate-600">
-                            Role:{" "}
-                            <span className="font-medium">
-                              {recipient.role}
-                            </span>
-                          </p>
-                          {recipient.position && (
+                      + Add
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {recipients.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+                      No recipients added yet
+                    </div>
+                  ) : (
+                    recipients.map((recipient) => (
+                      <div
+                        key={recipient.id}
+                        className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-sm text-slate-900">
+                              {recipient.email}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-600">
+                              Full name:{" "}
+                              <span className="font-medium text-gray-800">
+                                {recipient.name || "Not provided"}
+                              </span>
+                            </p>
                             <p className="text-xs text-slate-600">
-                              Position:{" "}
+                              Company:{" "}
+                              <span className="font-medium text-gray-800">
+                                {recipient.company_name || "Not provided"}
+                              </span>
+                            </p>
+                            <p className="mt-1 text-xs text-slate-600">
+                              Role:{" "}
                               <span className="font-medium">
-                                {recipient.position}
+                                {recipient.role}
+                              </span>
+                            </p>
+                            {recipient.position && (
+                              <p className="text-xs text-slate-600">
+                                Position:{" "}
+                                <span className="font-medium">
+                                  {recipient.position}
+                                </span>
+                              </p>
+                            )}
+                            <p className="text-xs text-slate-600">
+                              Status:{" "}
+                              <span
+                                className={`font-medium ${
+                                  recipient.status === "pending"
+                                    ? "text-yellow-600"
+                                    : recipient.status === "signed"
+                                      ? "text-green-600"
+                                      : "text-blue-600"
+                                }`}
+                              >
+                                {recipient.status}
+                              </span>
+                            </p>
+                            {recipient.signed_at && (
+                              <p className="mt-1 text-xs text-slate-600">
+                                Signed:{" "}
+                                {new Date(recipient.signed_at).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                          {isEditableStatus && (
+                            <button
+                              onClick={() =>
+                                handleRemoveRecipient(recipient.id)
+                              }
+                              disabled={isLocked}
+                              className="text-xs text-rose-600 hover:text-rose-800 disabled:opacity-50"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeSidebarTab === "invoice" && (
+              <div className="p-6">
+                <h2 className="mb-4 text-lg font-medium text-slate-900">
+                  Invoice
+                </h2>
+                {attachedInvoices.length > 0 ? (
+                  <div className="space-y-3">
+                    {attachedInvoices.map((attachedInvoice) => {
+                      const total = Number(
+                        attachedInvoice.total_amount ??
+                          attachedInvoice.amount ??
+                          0,
+                      );
+                      const remaining =
+                        getInvoiceRemainingAmount(attachedInvoice);
+                      return (
+                        <div
+                          key={attachedInvoice.id}
+                          className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
+                        >
+                          <div className="flex items-start justify-between mb-3 gap-2">
+                            <Link href={`/invoices/${attachedInvoice.id}`}>
+                              <p className="font-medium text-sm text-slate-900 hover:underline cursor-pointer">
+                                {attachedInvoice.invoice_number ||
+                                  "Attached Invoice"}
+                              </p>
+                            </Link>
+                            <button
+                              onClick={() =>
+                                handleDetachInvoice(attachedInvoice.id)
+                              }
+                              disabled={attachingInvoice || detachingInvoice}
+                              className="rounded-full bg-rose-600 px-3 py-1 text-xs text-white hover:bg-rose-700 disabled:opacity-50"
+                            >
+                              Detach
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-xs font-medium capitalize text-slate-700 ring-1 ring-slate-200">
+                              {String(attachedInvoice.status || "").replace(
+                                /_/g,
+                                " ",
+                              )}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600">
+                            Amount:{" "}
+                            <span className="font-medium text-slate-800">
+                              {attachedInvoice.currency} {total.toFixed(2)}
+                            </span>
+                          </p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            Remaining Amount:{" "}
+                            <span className="font-medium text-slate-800">
+                              {attachedInvoice.currency} {remaining.toFixed(2)}
+                            </span>
+                          </p>
+                          {attachedInvoice.due_date && (
+                            <p className="mt-1 text-xs text-slate-600">
+                              Due Date:{" "}
+                              <span className="font-medium text-slate-800">
+                                {new Date(
+                                  attachedInvoice.due_date,
+                                ).toLocaleDateString()}
                               </span>
                             </p>
                           )}
-                          <p className="text-xs text-slate-600">
-                            Status:{" "}
-                            <span
-                              className={`font-medium ${
-                                recipient.status === "pending"
-                                  ? "text-yellow-600"
-                                  : recipient.status === "signed"
-                                    ? "text-green-600"
-                                    : "text-blue-600"
-                              }`}
-                            >
-                              {recipient.status}
+                          <p className="mt-1 text-xs text-slate-600">
+                            Created:{" "}
+                            <span className="font-medium text-slate-800">
+                              {new Date(
+                                attachedInvoice.created_at,
+                              ).toLocaleDateString()}
                             </span>
                           </p>
-                          {recipient.signed_at && (
-                            <p className="mt-1 text-xs text-slate-600">
-                              Signed:{" "}
-                              {new Date(recipient.signed_at).toLocaleString()}
-                            </p>
-                          )}
                         </div>
-                        {isEditableStatus && (
-                          <button
-                            onClick={() => handleRemoveRecipient(recipient.id)}
-                            disabled={isLocked}
-                            className="text-xs text-rose-600 hover:text-rose-800 disabled:opacity-50"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                    <p className="mb-3 text-sm text-slate-500">
+                      No invoice attached yet.
+                    </p>
+                    <button
+                      onClick={openAttachInvoiceModal}
+                      disabled={
+                        isLocked || attachingInvoice || !currentUser?.id
+                      }
+                      className="rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      Attach Invoice
+                    </button>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {activeSidebarTab === "invoice" && (
-            <div className="p-6">
-              <h2 className="mb-4 text-lg font-medium text-slate-900">Invoice</h2>
-              {attachedInvoices.length > 0 ? (
-                <div className="space-y-3">
-                  {attachedInvoices.map((attachedInvoice) => {
-                    const total = Number(
-                      attachedInvoice.total_amount ?? attachedInvoice.amount ?? 0,
-                    );
-                    const remaining = getInvoiceRemainingAmount(attachedInvoice);
-                    return (
-                      <div
-                        key={attachedInvoice.id}
-                        className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
-                      >
-                        <div className="flex items-start justify-between mb-3 gap-2">
-                          <Link href={`/invoices/${attachedInvoice.id}`}>
-                            <p className="font-medium text-sm text-slate-900 hover:underline cursor-pointer">
-                              {attachedInvoice.invoice_number || "Attached Invoice"}
-                            </p>
-                          </Link>
-                          <button
-                            onClick={() => handleDetachInvoice(attachedInvoice.id)}
-                            disabled={attachingInvoice || detachingInvoice}
-                            className="rounded-full bg-rose-600 px-3 py-1 text-xs text-white hover:bg-rose-700 disabled:opacity-50"
-                          >
-                            Detach
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-xs font-medium capitalize text-slate-700 ring-1 ring-slate-200">
-                            {String(attachedInvoice.status || "").replace(/_/g, " ")}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600">
-                          Amount:{" "}
-                          <span className="font-medium text-slate-800">
-                            {attachedInvoice.currency} {total.toFixed(2)}
-                          </span>
-                        </p>
-                        <p className="mt-1 text-xs text-slate-600">
-                          Remaining Amount:{" "}
-                          <span className="font-medium text-slate-800">
-                            {attachedInvoice.currency} {remaining.toFixed(2)}
-                          </span>
-                        </p>
-                        {attachedInvoice.due_date && (
-                          <p className="mt-1 text-xs text-slate-600">
-                            Due Date:{" "}
-                            <span className="font-medium text-slate-800">
-                              {new Date(attachedInvoice.due_date).toLocaleDateString()}
-                            </span>
-                          </p>
-                        )}
-                        <p className="mt-1 text-xs text-slate-600">
-                          Created:{" "}
-                          <span className="font-medium text-slate-800">
-                            {new Date(attachedInvoice.created_at).toLocaleDateString()}
-                          </span>
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
-                  <p className="mb-3 text-sm text-slate-500">
-                    No invoice attached yet.
-                  </p>
-                  <button
-                    onClick={openAttachInvoiceModal}
-                    disabled={isLocked || attachingInvoice || !currentUser?.id}
-                    className="rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    Attach Invoice
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
           </div>
         </div>
       </main>
@@ -1567,7 +1608,10 @@ export default function EditDocument() {
                             navigator.clipboard.writeText(
                               generatedLinks[recipient.id],
                             );
-                            openAlertModal("Link copied to clipboard!", "Copied");
+                            openAlertModal(
+                              "Link copied to clipboard!",
+                              "Copied",
+                            );
                           }}
                           className="bg-black hover:bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                         >
@@ -1610,12 +1654,12 @@ export default function EditDocument() {
       {showModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 font-serif">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 font-helvetica-neue">
               Add Recipient
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1625,12 +1669,12 @@ export default function EditDocument() {
                     setNewRecipient({ ...newRecipient, email: e.target.value })
                   }
                   placeholder="recipient@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-helvetica-neue"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1640,12 +1684,12 @@ export default function EditDocument() {
                     setNewRecipient({ ...newRecipient, name: e.target.value })
                   }
                   placeholder="Full Name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-helvetica-neue"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                   Company Name
                 </label>
                 <input
@@ -1658,12 +1702,12 @@ export default function EditDocument() {
                     })
                   }
                   placeholder="Company Name (optional)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-helvetica-neue"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                   Position
                 </label>
                 <input
@@ -1676,12 +1720,12 @@ export default function EditDocument() {
                     })
                   }
                   placeholder="Position (optional)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-serif"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent text-black bg-white/80 font-helvetica-neue"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                   Role
                 </label>
                 <select
@@ -1692,12 +1736,12 @@ export default function EditDocument() {
                       role: e.target.value as "signer" | "viewer",
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent bg-white/80 font-serif"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-black focus:border-transparent bg-white/80 font-helvetica-neue"
                 >
-                  <option className="font-serif" value="signer">
+                  <option className="font-helvetica-neue" value="signer">
                     Signer
                   </option>
-                  <option className="font-serif" value="viewer">
+                  <option className="font-helvetica-neue" value="viewer">
                     Viewer
                   </option>
                 </select>
@@ -1715,7 +1759,7 @@ export default function EditDocument() {
                 >
                   {addingRecipient ? (
                     <>
-                      <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full font-serif"></div>
+                      <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full font-helvetica-neue"></div>
                       Adding...
                     </>
                   ) : (
@@ -1725,7 +1769,7 @@ export default function EditDocument() {
                 <button
                   onClick={() => setShowModal(false)}
                   disabled={addingRecipient}
-                  className="flex-1 px-4 py-2 bg-white text-black border-2 border-black rounded-full font-medium hover:bg-gray-100 disabled:opacity-50 font-serif"
+                  className="flex-1 px-4 py-2 bg-white text-black border-2 border-black rounded-full font-medium hover:bg-gray-100 disabled:opacity-50 font-helvetica-neue"
                 >
                   Cancel
                 </button>

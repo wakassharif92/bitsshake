@@ -1206,9 +1206,11 @@ export default function InvoiceViewPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-gray-900 font-serif">Invoice not found.</p>
+          <p className="text-gray-900 font-helvetica-neue">
+            Invoice not found.
+          </p>
           <Link href="/invoices">
-            <button className="mt-4 px-6 py-2 bg-black text-white rounded-full font-serif">
+            <button className="mt-4 px-6 py-2 bg-black text-white rounded-full font-helvetica-neue">
               Back to Invoices
             </button>
           </Link>
@@ -1462,7 +1464,9 @@ export default function InvoiceViewPage() {
               )}
               <div className="max-w-3xl">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${getInvoiceStatusClasses(invoice.status)}`}>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${getInvoiceStatusClasses(invoice.status)}`}
+                  >
                     {getInvoiceStatusLabel(invoice.status)}
                   </span>
                   <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
@@ -1562,263 +1566,257 @@ export default function InvoiceViewPage() {
             </h2>
           </div>
           <div className="space-y-8 p-6 sm:p-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Invoice Number
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.invoice_number}
-              </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Invoice Number
+                </p>
+                <p className="text-lg text-gray-900">
+                  {invoice.invoice_number}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Type
+                </p>
+                <p className="text-lg text-gray-900 capitalize">
+                  {invoice.invoice_type === "one_time"
+                    ? "One Time Payment"
+                    : "Milestone"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Client Name
+                </p>
+                <p className="text-lg text-gray-900">{invoice.client_name}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Client Email
+                </p>
+                <p className="text-lg text-gray-900">
+                  {invoice.client_email || "-"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Sender Signer Email
+                </p>
+                <p className="text-lg text-gray-900">
+                  {invoice.sender_signer_email || "-"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Receiver Signer Email
+                </p>
+                <p className="text-lg text-gray-900">
+                  {invoice.receiver_signer_email || "-"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Due Date
+                </p>
+                <p className="text-lg text-gray-900">
+                  {invoice.due_date
+                    ? new Date(invoice.due_date).toLocaleDateString()
+                    : "-"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Total
+                </p>
+                <p className="text-lg text-gray-900">
+                  {invoice.currency} {totalAmount.toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Remaining Amount To Be Paid
+                </p>
+                <p className="text-lg text-gray-900">
+                  {invoice.currency} {remainingAmountToBePaid.toFixed(2)}
+                </p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Type
-              </p>
-              <p className="text-lg text-gray-900 capitalize">
-                {invoice.invoice_type === "one_time"
-                  ? "One Time Payment"
-                  : "Milestone"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Client Name
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.client_name}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Client Email
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.client_email || "-"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Sender Signer Email
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.sender_signer_email || "-"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Receiver Signer Email
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.receiver_signer_email || "-"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Due Date
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.due_date
-                  ? new Date(invoice.due_date).toLocaleDateString()
-                  : "-"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Total
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.currency} {totalAmount.toFixed(2)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Remaining Amount To Be Paid
-              </p>
-              <p className="text-lg text-gray-900">
-                {invoice.currency} {remainingAmountToBePaid.toFixed(2)}
-              </p>
-            </div>
-          </div>
 
-          {invoice.description && (
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                Description
-              </p>
-              <p className="mt-1 text-gray-900">
-                {invoice.description}
-              </p>
-            </div>
-          )}
+            {invoice.description && (
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Description
+                </p>
+                <p className="mt-1 text-gray-900">{invoice.description}</p>
+              </div>
+            )}
 
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">
-                {invoice.invoice_type === "milestone" ? "Milestones" : "Item"}
-              </p>
-              {canEditMilestones && (
-                <div className="flex items-center gap-2">
-                  {invoice.invoice_type === "milestone" && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  {invoice.invoice_type === "milestone" ? "Milestones" : "Item"}
+                </p>
+                {canEditMilestones && (
+                  <div className="flex items-center gap-2">
+                    {invoice.invoice_type === "milestone" && (
+                      <button
+                        onClick={addMilestoneRow}
+                        className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800"
+                      >
+                        + Add Milestone
+                      </button>
+                    )}
                     <button
-                      onClick={addMilestoneRow}
-                      className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800"
+                      onClick={saveMilestones}
+                      disabled={savingMilestones}
+                      className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:opacity-50"
                     >
-                      + Add Milestone
+                      {savingMilestones ? "Saving..." : "Save Changes"}
                     </button>
-                  )}
-                  <button
-                    onClick={saveMilestones}
-                    disabled={savingMilestones}
-                    className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    {savingMilestones ? "Saving..." : "Save Changes"}
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white">
-              <table className="min-w-full">
-                <thead className="bg-slate-50/80 border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Item
-                    </th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Amount
-                    </th>
-                    <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Sender Signature
-                    </th>
-                    <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Receiver Signature
-                    </th>
-                    <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Delete
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {editableMilestones.length > 0 ? (
-                    editableMilestones.map((entry, index) => {
-                      const rowLocked =
-                        !!entry.sender_signature_text ||
-                        !!entry.receiver_signature_text;
-                      const isCurrentMilestoneUnlocked =
-                        index === 0 ||
-                        editableMilestones
-                          .slice(0, index)
-                          .every(
-                            (m) =>
-                              !!(m.sender_signature_text || "").trim() &&
-                              !!(m.receiver_signature_text || "").trim(),
-                          );
+                  </div>
+                )}
+              </div>
+              <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white">
+                <table className="min-w-full">
+                  <thead className="bg-slate-50/80 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Item
+                      </th>
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Amount
+                      </th>
+                      <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Sender Signature
+                      </th>
+                      <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Receiver Signature
+                      </th>
+                      <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Delete
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {editableMilestones.length > 0 ? (
+                      editableMilestones.map((entry, index) => {
+                        const rowLocked =
+                          !!entry.sender_signature_text ||
+                          !!entry.receiver_signature_text;
+                        const isCurrentMilestoneUnlocked =
+                          index === 0 ||
+                          editableMilestones
+                            .slice(0, index)
+                            .every(
+                              (m) =>
+                                !!(m.sender_signature_text || "").trim() &&
+                                !!(m.receiver_signature_text || "").trim(),
+                            );
 
-                      return (
-                        <tr key={entry.id}>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {canEditMilestones ? (
-                              <input
-                                type="text"
-                                value={entry.item}
-                                onChange={(e) =>
-                                  updateMilestoneRow(
-                                    entry.id,
-                                    "item",
-                                    e.target.value,
-                                  )
-                                }
-                                disabled={rowLocked}
-                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                              />
-                            ) : (
-                              entry.item
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                            {canEditMilestones ? (
-                              <div className="flex items-center justify-end gap-2">
-                                <span>{invoice.currency}</span>
+                        return (
+                          <tr key={entry.id}>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {canEditMilestones ? (
                                 <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={entry.amount}
+                                  type="text"
+                                  value={entry.item}
                                   onChange={(e) =>
                                     updateMilestoneRow(
                                       entry.id,
-                                      "amount",
+                                      "item",
                                       e.target.value,
                                     )
                                   }
                                   disabled={rowLocked}
-                                  className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm text-right disabled:bg-gray-100 disabled:text-gray-500"
+                                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
                                 />
-                              </div>
-                            ) : (
-                              `${invoice.currency} ${Number(entry.amount || 0).toFixed(2)}`
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() =>
-                                openSignatureModal(entry, "sender", index)
-                              }
-                              disabled={!isCurrentMilestoneUnlocked}
-                              className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
-                            >
-                              {entry.sender_signature_text
-                                ? "View Signature"
-                                : "Not Signed"}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() =>
-                                openSignatureModal(entry, "receiver", index)
-                              }
-                              disabled={!isCurrentMilestoneUnlocked}
-                              className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
-                            >
-                              {entry.receiver_signature_text
-                                ? "View Signature"
-                                : "Not Signed"}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {canEditMilestones &&
-                            invoice.invoice_type === "milestone" &&
-                            editableMilestones.length > 1 &&
-                            !rowLocked ? (
+                              ) : (
+                                entry.item
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                              {canEditMilestones ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  <span>{invoice.currency}</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={entry.amount}
+                                    onChange={(e) =>
+                                      updateMilestoneRow(
+                                        entry.id,
+                                        "amount",
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={rowLocked}
+                                    className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm text-right disabled:bg-gray-100 disabled:text-gray-500"
+                                  />
+                                </div>
+                              ) : (
+                                `${invoice.currency} ${Number(entry.amount || 0).toFixed(2)}`
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
                               <button
-                                onClick={() => removeMilestoneRow(entry.id)}
-                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-rose-600 text-white hover:bg-rose-700 text-xs"
+                                onClick={() =>
+                                  openSignatureModal(entry, "sender", index)
+                                }
+                                disabled={!isCurrentMilestoneUnlocked}
+                                className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
                               >
-                                Delete
+                                {entry.sender_signature_text
+                                  ? "View Signature"
+                                  : "Not Signed"}
                               </button>
-                            ) : (
-                              <span className="text-xs text-gray-400">
-                                -
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td
-                        className="px-4 py-4 text-sm text-gray-500"
-                        colSpan={5}
-                      >
-                        No items found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() =>
+                                  openSignatureModal(entry, "receiver", index)
+                                }
+                                disabled={!isCurrentMilestoneUnlocked}
+                                className="text-xs px-3 py-1.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
+                              >
+                                {entry.receiver_signature_text
+                                  ? "View Signature"
+                                  : "Not Signed"}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {canEditMilestones &&
+                              invoice.invoice_type === "milestone" &&
+                              editableMilestones.length > 1 &&
+                              !rowLocked ? (
+                                <button
+                                  onClick={() => removeMilestoneRow(entry.id)}
+                                  className="inline-flex items-center px-3 py-1.5 rounded-full bg-rose-600 text-white hover:bg-rose-700 text-xs"
+                                >
+                                  Delete
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td
+                          className="px-4 py-4 text-sm text-gray-500"
+                          colSpan={5}
+                        >
+                          No items found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
           </div>
         </div>
       </main>

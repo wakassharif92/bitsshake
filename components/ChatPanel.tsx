@@ -346,14 +346,14 @@ export default function ChatPanel({
     <div className="h-full flex flex-col">
       {/* Chat Heading */}
       {/* <div className="border-b border-gray-200 p-4">
-        <h2 className="text-lg font-semibold text-gray-900 font-serif">
+        <h2 className="text-lg font-semibold text-gray-900 font-helvetica-neue">
           Conversation
         </h2>
       </div> */}
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-4 font-serif">
+          <div className="text-center text-gray-500 mt-4 font-helvetica-neue">
             No messages yet. Start a conversation!
           </div>
         ) : (
@@ -458,13 +458,13 @@ export default function ChatPanel({
                       ? "bg-amber-100 text-amber-900 border border-amber-200"
                       : isRevert
                         ? "bg-red-100 text-red-900 border border-red-200"
-                      : isInvoiceDetach
-                        ? "bg-black text-white border border-black"
-                      : isInvoiceAttach
-                        ? "bg-black text-white border border-black"
-                      : isCurrentUserMessage
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-200 text-gray-900"
+                        : isInvoiceDetach
+                          ? "bg-black text-white border border-black"
+                          : isInvoiceAttach
+                            ? "bg-black text-white border border-black"
+                            : isCurrentUserMessage
+                              ? "bg-gray-700 text-white"
+                              : "bg-gray-200 text-gray-900"
                   } rounded-lg p-3`}
                 >
                   <div className="mb-1 flex  justify-between gap-2">
@@ -561,13 +561,13 @@ export default function ChatPanel({
                         ? "text-amber-800/80"
                         : isRevert
                           ? "text-red-800/80"
-                        : isInvoiceDetach
-                          ? "text-white/70"
-                        : isInvoiceAttach
-                          ? "text-white/70"
-                        : isCurrentUserMessage
-                          ? "text-white/70"
-                          : "text-gray-600"
+                          : isInvoiceDetach
+                            ? "text-white/70"
+                            : isInvoiceAttach
+                              ? "text-white/70"
+                              : isCurrentUserMessage
+                                ? "text-white/70"
+                                : "text-gray-600"
                     }`}
                   >
                     {new Date(msg.created_at).toLocaleString()}
@@ -655,7 +655,7 @@ export default function ChatPanel({
                 }
               }}
               placeholder="Type a message... (Shift+Enter or Ctrl+Enter to send)"
-              className="w-full px-4 py-3 pr-12 text-sm text-black placeholder-gray-500 bg-white border border-gray-300 focus:outline-none resize-none font-serif"
+              className="w-full px-4 py-3 pr-12 text-sm text-black placeholder-gray-500 bg-white border border-gray-300 focus:outline-none resize-none font-helvetica-neue"
               rows={3}
               disabled={sending || isDisabled}
               style={{

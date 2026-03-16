@@ -247,7 +247,10 @@ export default function InvoicesPage() {
   const handleDeleteInvoice = async (invoiceId: string) => {
     try {
       setDeletingInvoice(true);
-      const { error } = await supabase.from("invoices").delete().eq("id", invoiceId);
+      const { error } = await supabase
+        .from("invoices")
+        .delete()
+        .eq("id", invoiceId);
       if (error) throw error;
       setInvoices((prev) => prev.filter((invoice) => invoice.id !== invoiceId));
       setInvoiceToDelete(null);
@@ -279,7 +282,8 @@ export default function InvoicesPage() {
     (invoice) => invoice.status === "draft" || invoice.status === "in_progress",
   ).length;
   const completedCount = invoices.filter(
-    (invoice) => invoice.status === "completed" || invoice.status === "received",
+    (invoice) =>
+      invoice.status === "completed" || invoice.status === "received",
   ).length;
 
   const getInvoiceStatusClasses = (status?: string) => {
@@ -529,21 +533,27 @@ export default function InvoicesPage() {
                       const milestones = Array.isArray(invoice.milestones)
                         ? (invoice.milestones as InvoiceMilestone[])
                         : [];
-                      const completedAmount = milestones.reduce((sum, milestone) => {
-                        const isFullySigned =
-                          !!(milestone.sender_signature_text || "").trim() &&
-                          !!(milestone.receiver_signature_text || "").trim();
-                        if (!isFullySigned) return sum;
-                        const value = Number(milestone.amount || 0);
-                        return sum + (Number.isFinite(value) ? value : 0);
-                      }, 0);
+                      const completedAmount = milestones.reduce(
+                        (sum, milestone) => {
+                          const isFullySigned =
+                            !!(milestone.sender_signature_text || "").trim() &&
+                            !!(milestone.receiver_signature_text || "").trim();
+                          if (!isFullySigned) return sum;
+                          const value = Number(milestone.amount || 0);
+                          return sum + (Number.isFinite(value) ? value : 0);
+                        },
+                        0,
+                      );
                       const remainingAmount = Math.max(
                         Number(invoice.total_amount ?? invoice.amount ?? 0) -
                           completedAmount,
                         0,
                       ).toFixed(2);
                       return (
-                        <tr key={invoice.id} className="transition-colors hover:bg-slate-50/80">
+                        <tr
+                          key={invoice.id}
+                          className="transition-colors hover:bg-slate-50/80"
+                        >
                           <td className="px-6 py-5 text-sm text-slate-700 sm:px-8">
                             <div className="max-w-xs">
                               <p className="font-medium text-slate-900">
@@ -566,7 +576,9 @@ export default function InvoicesPage() {
                             {invoice.currency} {remainingAmount}
                           </td>
                           <td className="px-6 py-5 whitespace-nowrap text-sm">
-                            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getInvoiceStatusClasses(invoice.status)}`}>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getInvoiceStatusClasses(invoice.status)}`}
+                            >
                               {getInvoiceStatusLabel(invoice.status)}
                             </span>
                           </td>
@@ -652,14 +664,17 @@ export default function InvoicesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                   Client Name *
                 </label>
                 <input
                   type="text"
                   value={form.client_name}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, client_name: e.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      client_name: e.target.value,
+                    }))
                   }
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                 />
@@ -667,20 +682,23 @@ export default function InvoicesPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                     Client Email
                   </label>
                   <input
                     type="email"
                     value={form.client_email}
                     onChange={(e) =>
-                      setForm((prev) => ({ ...prev, client_email: e.target.value }))
+                      setForm((prev) => ({
+                        ...prev,
+                        client_email: e.target.value,
+                      }))
                     }
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                     Sender Signer Email
                   </label>
                   <input
@@ -700,7 +718,7 @@ export default function InvoicesPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                     Receiver Signer Email
                   </label>
                   <input
@@ -717,7 +735,7 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                     Due Date
                   </label>
                   <input
@@ -733,7 +751,7 @@ export default function InvoicesPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                     Currency
                   </label>
                   <input
@@ -742,19 +760,22 @@ export default function InvoicesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, currency: e.target.value }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-serif"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black font-helvetica-neue"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-serif">
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-helvetica-neue">
                   Description
                 </label>
                 <textarea
                   value={form.description}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, description: e.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
                   }
                   rows={3}
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-black shadow-sm"
@@ -763,7 +784,7 @@ export default function InvoicesPage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900 font-serif">
+                  <p className="text-sm font-semibold text-gray-900 font-helvetica-neue">
                     {form.invoice_type === "milestone"
                       ? "Milestone List"
                       : "Payment Item"}
@@ -772,7 +793,7 @@ export default function InvoicesPage() {
                     <button
                       type="button"
                       onClick={addMilestoneItem}
-                    className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                      className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
                     >
                       + Add Item
                     </button>
@@ -813,27 +834,29 @@ export default function InvoicesPage() {
                       />
                     </div>
                     <div className="sm:col-span-1">
-                      {form.invoice_type === "milestone" && form.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeMilestoneItem(entry.id)}
-                          className="w-full rounded-2xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:w-auto"
-                        >
-                          X
-                        </button>
-                      )}
+                      {form.invoice_type === "milestone" &&
+                        form.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeMilestoneItem(entry.id)}
+                            className="w-full rounded-2xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:w-auto"
+                          >
+                            X
+                          </button>
+                        )}
                     </div>
                   </div>
                 ))}
 
                 <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
-                  <span className="text-sm text-gray-700 font-serif">
+                  <span className="text-sm text-gray-700 font-helvetica-neue">
                     {form.invoice_type === "milestone"
                       ? `Total Milestones: ${form.items.length}`
                       : "One Time Payment"}
                   </span>
-                  <span className="text-sm font-semibold text-gray-900 font-serif">
-                    Total: {form.currency.toUpperCase()} {totalAmount.toFixed(2)}
+                  <span className="text-sm font-semibold text-gray-900 font-helvetica-neue">
+                    Total: {form.currency.toUpperCase()}{" "}
+                    {totalAmount.toFixed(2)}
                   </span>
                 </div>
               </div>

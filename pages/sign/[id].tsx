@@ -379,7 +379,7 @@ export default function SignDocument() {
     const urlEmail = Array.isArray(email) ? email[0] : email;
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="text-center font-serif space-y-2">
+        <div className="text-center font-helvetica-neue space-y-2">
           <p className="text-black text-sm sm:text-base">
             Document or recipient not found. Please check your signing link.
           </p>
@@ -600,7 +600,7 @@ export default function SignDocument() {
                 <div className="prose prose-lg max-w-none text-black">
                   <div
                     dangerouslySetInnerHTML={{ __html: document.content || "" }}
-                    className="font-serif leading-relaxed text-slate-900"
+                    className="font-helvetica-neue leading-relaxed text-slate-900"
                     style={{ lineHeight: "1.75" }}
                   />
                 </div>
@@ -608,7 +608,7 @@ export default function SignDocument() {
                 {/* Signatures section */}
                 {signedRecipients.length > 0 && (
                   <div className="mt-12 border-t border-slate-200 pt-8">
-                    <h3 className="mb-6 text-lg font-semibold text-slate-900 font-serif">
+                    <h3 className="mb-6 text-lg font-semibold text-slate-900 font-helvetica-neue">
                       Signatures
                     </h3>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -622,20 +622,20 @@ export default function SignDocument() {
                               fontSize: "24px",
                               fontFamily: "cursive",
                             }}
-                            className="mb-2 text-slate-900 font-serif"
+                            className="mb-2 text-slate-900 font-helvetica-neue"
                           >
                             {signer.signature_text || "_________________"}
                           </p>
-                          <p className="text-sm text-slate-700 font-serif">
+                          <p className="text-sm text-slate-700 font-helvetica-neue">
                             {signer.name || signer.email}
                           </p>
                           {signer.name && (
-                            <p className="text-xs text-slate-500 font-serif">
+                            <p className="text-xs text-slate-500 font-helvetica-neue">
                               {signer.email}
                             </p>
                           )}
                           {signer.signed_at && (
-                            <p className="mt-1 text-xs text-slate-500 font-serif">
+                            <p className="mt-1 text-xs text-slate-500 font-helvetica-neue">
                               Signed:{" "}
                               {new Date(signer.signed_at).toLocaleString()}
                             </p>
@@ -649,7 +649,7 @@ export default function SignDocument() {
                 {/* Discussion signatures section */}
                 {chatSignatures.length > 0 && (
                   <div className="mt-12 border-t border-slate-200 pt-8">
-                    <h3 className="mb-6 text-lg font-semibold text-slate-900 font-serif">
+                    <h3 className="mb-6 text-lg font-semibold text-slate-900 font-helvetica-neue">
                       Signature Agreement
                     </h3>
                     <div className="space-y-6">
@@ -663,12 +663,12 @@ export default function SignDocument() {
                             key={sig.id}
                             className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
                           >
-                            <p className="text-sm font-semibold text-slate-900 font-serif">
+                            <p className="text-sm font-semibold text-slate-900 font-helvetica-neue">
                               {title}
                             </p>
                             {parsed.sigName && (
                               <p
-                                className="mt-2 text-2xl text-slate-900 font-serif"
+                                className="mt-2 text-2xl text-slate-900 font-helvetica-neue"
                                 style={{
                                   fontFamily: parsed.signatureFontFamily,
                                 }}
@@ -676,7 +676,7 @@ export default function SignDocument() {
                                 {parsed.sigName}
                               </p>
                             )}
-                            <div className="mt-2 space-y-1 text-xs text-slate-600 font-serif">
+                            <div className="mt-2 space-y-1 text-xs text-slate-600 font-helvetica-neue">
                               <p>Name: {sig.sender_name || sig.sender_email}</p>
                               <p>Email: {sig.sender_email}</p>
                               {sig.sender_location && (
@@ -723,7 +723,7 @@ export default function SignDocument() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                       Your email
                     </p>
-                    <p className="mt-2 break-all text-sm font-semibold text-slate-900 font-serif">
+                    <p className="mt-2 break-all text-sm font-semibold text-slate-900 font-helvetica-neue">
                       {recipient.email}
                     </p>
                   </div>
@@ -731,7 +731,7 @@ export default function SignDocument() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                       Your role
                     </p>
-                    <p className="mt-2 text-sm font-semibold capitalize text-slate-900 font-serif">
+                    <p className="mt-2 text-sm font-semibold capitalize text-slate-900 font-helvetica-neue">
                       {recipient.role}
                     </p>
                   </div>
@@ -742,7 +742,7 @@ export default function SignDocument() {
                   recipient.status === "pending" && (
                     <>
                       <div>
-                        <h3 className="mb-4 text-lg font-semibold text-slate-900 font-serif">
+                        <h3 className="mb-4 text-lg font-semibold text-slate-900 font-helvetica-neue">
                           Sign Document
                         </h3>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -759,7 +759,7 @@ export default function SignDocument() {
                               }
                               className="h-4 w-4 text-slate-950"
                             />
-                            <span className="ml-3 text-sm text-slate-700 font-serif">
+                            <span className="ml-3 text-sm text-slate-700 font-helvetica-neue">
                               Type signature
                             </span>
                           </label>
@@ -776,7 +776,7 @@ export default function SignDocument() {
                               }
                               className="h-4 w-4 text-slate-950"
                             />
-                            <span className="ml-3 text-sm text-slate-700 font-serif">
+                            <span className="ml-3 text-sm text-slate-700 font-helvetica-neue">
                               Draw signature
                             </span>
                           </label>
@@ -785,7 +785,7 @@ export default function SignDocument() {
 
                       {signatureType === "typed" && (
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-700 font-serif">
+                          <label className="mb-2 block text-sm font-medium text-slate-700 font-helvetica-neue">
                             Your Name
                           </label>
                           <input
@@ -793,16 +793,16 @@ export default function SignDocument() {
                             value={signatureText}
                             onChange={(e) => setSignatureText(e.target.value)}
                             placeholder="Type your full name"
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-serif text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-helvetica-neue text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
                           />
 
-                          <label className="mb-2 mt-4 block text-sm font-medium text-slate-700 font-serif">
+                          <label className="mb-2 mt-4 block text-sm font-medium text-slate-700 font-helvetica-neue">
                             Signature Style
                           </label>
                           <select
                             value={signatureFont}
                             onChange={(e) => setSignatureFont(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-serif text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-helvetica-neue text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
                           >
                             {fonts.map((f) => (
                               <option key={f.value} value={f.value}>
@@ -812,8 +812,8 @@ export default function SignDocument() {
                           </select>
 
                           {signatureText && (
-                            <div className="mt-4 rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-5 font-serif">
-                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 font-serif">
+                            <div className="mt-4 rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-5 font-helvetica-neue">
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 font-helvetica-neue">
                                 Preview:
                               </p>
                               <p
@@ -830,7 +830,7 @@ export default function SignDocument() {
                                       ? "italic"
                                       : "normal",
                                 }}
-                                className="text-slate-900 font-serif"
+                                className="text-slate-900 font-helvetica-neue"
                               >
                                 {signatureText}
                               </p>
@@ -841,7 +841,7 @@ export default function SignDocument() {
 
                       {signatureType === "draw" && (
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                          <p className="text-sm text-amber-800 font-serif">
+                          <p className="text-sm text-amber-800 font-helvetica-neue">
                             Draw signature support coming soon. Please use "Type
                             signature" for now.
                           </p>
@@ -851,7 +851,7 @@ export default function SignDocument() {
                       <button
                         onClick={handleSign}
                         disabled={signing || !signatureText.trim()}
-                        className="w-full rounded-2xl bg-slate-950 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 font-serif"
+                        className="w-full rounded-2xl bg-slate-950 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 font-helvetica-neue"
                       >
                         {signing ? "Signing..." : "Sign Document"}
                       </button>
@@ -860,10 +860,10 @@ export default function SignDocument() {
 
                 {recipient.status === "signed" && (
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-sm font-medium text-emerald-800 font-serif">
+                    <p className="text-sm font-medium text-emerald-800 font-helvetica-neue">
                       Document signed!
                     </p>
-                    <p className="mt-2 text-xs text-emerald-700 font-serif">
+                    <p className="mt-2 text-xs text-emerald-700 font-helvetica-neue">
                       Signed on:{" "}
                       {new Date(recipient.signed_at || "").toLocaleString()}
                     </p>
@@ -872,7 +872,7 @@ export default function SignDocument() {
 
                 {recipient.role === "viewer" && (
                   <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-                    <p className="text-sm text-sky-800 font-serif">
+                    <p className="text-sm text-sky-800 font-helvetica-neue">
                       You are viewing this document as a viewer.
                     </p>
                   </div>
@@ -882,7 +882,7 @@ export default function SignDocument() {
                   <button
                     onClick={() => setShowRevertModal(true)}
                     disabled={revertingDocument}
-                    className="w-full rounded-2xl bg-rose-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 font-serif"
+                    className="w-full rounded-2xl bg-rose-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 font-helvetica-neue"
                   >
                     {revertingDocument ? "Reverting..." : "Revert"}
                   </button>
@@ -893,10 +893,10 @@ export default function SignDocument() {
             {/* Chat Panel - Always show for all document statuses */}
             <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
               <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-5">
-                <h3 className="text-lg font-semibold text-slate-900 font-serif">
+                <h3 className="text-lg font-semibold text-slate-900 font-helvetica-neue">
                   Discussion
                 </h3>
-                <p className="mt-2 text-sm text-slate-600 font-serif">
+                <p className="mt-2 text-sm text-slate-600 font-helvetica-neue">
                   Ask questions or clarify terms before the document is
                   completed.
                 </p>

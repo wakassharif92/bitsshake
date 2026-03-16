@@ -236,7 +236,8 @@ export default function ViewDocument() {
   };
 
   const handleDetachInvoice = (invoiceId: string) => {
-    const target = attachedInvoices.find((item) => item.id === invoiceId) || null;
+    const target =
+      attachedInvoices.find((item) => item.id === invoiceId) || null;
     setInvoiceToDetach(target);
     setDetachInvoiceReason("");
     setShowDetachInvoiceModal(true);
@@ -656,7 +657,8 @@ export default function ViewDocument() {
       (r.email || "").trim().toLowerCase() === normalizedCurrentEmail &&
       r.role === "signer",
   );
-  const canRevertDocument = document.status === "sent" && (isDocumentAdmin || isCurrentSigner);
+  const canRevertDocument =
+    document.status === "sent" && (isDocumentAdmin || isCurrentSigner);
   const canManageInvoices = isDocumentAdmin;
   const attachedInvoices = attachedInvoiceIds
     .map((invoiceId) => invoices.find((inv) => inv.id === invoiceId))
@@ -824,8 +826,8 @@ export default function ViewDocument() {
                 Revert Document?
               </h3>
               <p className="text-gray-600">
-                Revert will unlock this sent document for editing and set
-                its status to <strong>revert</strong>.
+                Revert will unlock this sent document for editing and set its
+                status to <strong>revert</strong>.
               </p>
               <div className="w-full text-left">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1047,21 +1049,21 @@ export default function ViewDocument() {
               </div>
               <div className="px-8 py-10 sm:px-10">
                 <div className="prose prose-lg max-w-none text-black">
-                <div
-                  dangerouslySetInnerHTML={{ __html: document.content || "" }}
-                  className="font-serif text-slate-800 leading-relaxed"
-                  style={{ lineHeight: "1.75" }}
-                />
-              </div>
+                  <div
+                    dangerouslySetInnerHTML={{ __html: document.content || "" }}
+                    className="font-helvetica-neue text-slate-800 leading-relaxed"
+                    style={{ lineHeight: "1.75" }}
+                  />
+                </div>
 
-              {/* Signatures section */}
-              {signers.length > 0 && (
-                <div className="mt-14 border-t border-slate-200 pt-8">
-                  <h3 className="mb-6 text-lg font-semibold text-slate-900 font-serif">
-                    Signatures
-                  </h3>
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    {signers.map((recipient) => (
+                {/* Signatures section */}
+                {signers.length > 0 && (
+                  <div className="mt-14 border-t border-slate-200 pt-8">
+                    <h3 className="mb-6 text-lg font-semibold text-slate-900 font-helvetica-neue">
+                      Signatures
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      {signers.map((recipient) => (
                         <div
                           key={recipient.id}
                           className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5"
@@ -1089,58 +1091,58 @@ export default function ViewDocument() {
                           )}
                         </div>
                       ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Discussion signatures section */}
-              {chatSignatures.length > 0 && (
-                <div className="mt-14 border-t border-slate-200 pt-8">
-                  <h3 className="mb-6 text-lg font-semibold text-slate-900">
-                    Signature Agreement
-                  </h3>
-                  <div className="space-y-6">
-                    {chatSignatures.map((sig) => {
-                      const parsed = parseChatSignature(sig.message);
-                      const title = parsed.sigReason
-                        ? `${parsed.sigReason} Signature`
-                        : "Signature";
-                      return (
-                        <div
-                          key={sig.id}
-                          className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5"
-                        >
-                          <p className="text-sm font-semibold text-slate-900">
-                            {title}
-                          </p>
-                          {parsed.sigName && (
-                            <p
-                              className="mt-2 text-2xl text-slate-900"
-                              style={{
-                                fontFamily: parsed.signatureFontFamily,
-                              }}
-                            >
-                              {parsed.sigName}
+                {/* Discussion signatures section */}
+                {chatSignatures.length > 0 && (
+                  <div className="mt-14 border-t border-slate-200 pt-8">
+                    <h3 className="mb-6 text-lg font-semibold text-slate-900">
+                      Signature Agreement
+                    </h3>
+                    <div className="space-y-6">
+                      {chatSignatures.map((sig) => {
+                        const parsed = parseChatSignature(sig.message);
+                        const title = parsed.sigReason
+                          ? `${parsed.sigReason} Signature`
+                          : "Signature";
+                        return (
+                          <div
+                            key={sig.id}
+                            className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5"
+                          >
+                            <p className="text-sm font-semibold text-slate-900">
+                              {title}
                             </p>
-                          )}
-                          <div className="mt-2 space-y-1 text-xs text-slate-600">
-                            <p>Name: {sig.sender_name || sig.sender_email}</p>
-                            <p>Email: {sig.sender_email}</p>
-                            {sig.sender_location && (
-                              <p>Location: {sig.sender_location}</p>
+                            {parsed.sigName && (
+                              <p
+                                className="mt-2 text-2xl text-slate-900"
+                                style={{
+                                  fontFamily: parsed.signatureFontFamily,
+                                }}
+                              >
+                                {parsed.sigName}
+                              </p>
                             )}
-                            {sig.sender_ip && <p>IP: {sig.sender_ip}</p>}
-                            <p>
-                              Signed:{" "}
-                              {new Date(sig.created_at).toLocaleString()}
-                            </p>
+                            <div className="mt-2 space-y-1 text-xs text-slate-600">
+                              <p>Name: {sig.sender_name || sig.sender_email}</p>
+                              <p>Email: {sig.sender_email}</p>
+                              {sig.sender_location && (
+                                <p>Location: {sig.sender_location}</p>
+                              )}
+                              {sig.sender_ip && <p>IP: {sig.sender_ip}</p>}
+                              <p>
+                                Signed:{" "}
+                                {new Date(sig.created_at).toLocaleString()}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               </div>
             </div>
           </div>
@@ -1154,46 +1156,46 @@ export default function ViewDocument() {
                   Workspace
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setActiveTab("conversation")}
-                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === "conversation"
-                      ? "bg-slate-950 text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  Conversation
-                </button>
-                <button
-                  onClick={() => setActiveTab("logs")}
-                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === "logs"
-                      ? "bg-slate-950 text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  Logs
-                </button>
-                <button
-                  onClick={() => setActiveTab("recipients")}
-                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === "recipients"
-                      ? "bg-slate-950 text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  Recipients
-                </button>
-                <button
-                  onClick={() => setActiveTab("invoice")}
-                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === "invoice"
-                      ? "bg-slate-950 text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  Invoice
-                </button>
+                  <button
+                    onClick={() => setActiveTab("conversation")}
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                      activeTab === "conversation"
+                        ? "bg-slate-950 text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Conversation
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("logs")}
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                      activeTab === "logs"
+                        ? "bg-slate-950 text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Logs
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("recipients")}
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                      activeTab === "recipients"
+                        ? "bg-slate-950 text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Recipients
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("invoice")}
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                      activeTab === "invoice"
+                        ? "bg-slate-950 text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Invoice
+                  </button>
                 </div>
               </div>
 
@@ -1365,7 +1367,9 @@ export default function ViewDocument() {
                                     onClick={() =>
                                       handleDetachInvoice(attachedInvoice.id)
                                     }
-                                    disabled={attachingInvoice || detachingInvoice}
+                                    disabled={
+                                      attachingInvoice || detachingInvoice
+                                    }
                                     className="rounded-full bg-rose-600 px-3 py-1 text-xs text-white hover:bg-rose-700 disabled:opacity-50"
                                   >
                                     Detach
@@ -1507,7 +1511,7 @@ export default function ViewDocument() {
                                     {entry.log.details.city},{" "}
                                     {entry.log.details.country}
                                   </p>
-                              )}
+                                )}
                               {entry.log.ip_address && (
                                 <p className="text-xs text-slate-700">
                                   <span className="font-medium">IP:</span>{" "}
